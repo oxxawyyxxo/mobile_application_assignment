@@ -20,7 +20,7 @@ List<AppUser> mockUserDatabase = [
       role: 'Staff'
   ),
   AppUser(
-      username: 'User',
+      username: 'user',
       fullName: 'Ger Ah Heng',
       password: 'User12345@',
       role: 'User'
