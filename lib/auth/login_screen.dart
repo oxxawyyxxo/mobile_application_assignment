@@ -25,7 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final _password = _passwordCtrl.text;
 
       final matchingUser = mockUserDatabase.firstWhere(
-          (u) => u.username == _username &&
+          (u) => u.username.toUpperCase() == _username.toUpperCase() &&
               u.password == _password &&
               u.role == _selectedRole,
 
@@ -51,6 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
         );
+        return;
       }
 
       if(_selectedRole == 'Staff'){
@@ -105,7 +106,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   ElevatedButton.icon(
                       onPressed: swipe,
-                      label: Icon(Icons.change_circle)
+                      icon: const Icon(Icons.change_circle),
+                    label: const Text('Swap Role'),
                   )
                 ],
               ),

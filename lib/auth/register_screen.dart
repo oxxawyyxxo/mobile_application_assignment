@@ -25,7 +25,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if(!value.contains(RegExp(r'[A-Z]'))){
       return 'Must contain at least 1 uppercase letter';
     }
-    if(!value.contains(RegExp(r'a-z'))){
+    if(!value.contains(RegExp(r'[a-z]'))){
       return 'Must contain at least 1 lower case';
     }
     if(!value.contains(RegExp(r'[\\!@#$&*~%^().,]'))){
