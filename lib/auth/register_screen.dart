@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -10,11 +11,14 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _supabase = Supabase.instance.client;
   
-  final TextEditingController usernameCtrl = TextEditingController();
+  final TextEditingController emailCtrl = TextEditingController();
   final TextEditingController fullnameCtrl = TextEditingController();
   final TextEditingController passwordCtrl = TextEditingController();
-  
+
+  bool _isLoading = false;
+
   String? _validatePassword(String? value){
     if (value == null || value.isEmpty){
       return 'Password is required';
@@ -34,74 +38,73 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return null;
   }
   
-  void _register(){
+  Future<void> _register() async{
     if(_formKey.currentState!.validate()){
-      mockUserDatabase.add(
-        AppUser(
-            username: usernameCtrl.text.trim(), 
-            fullName: fullnameCtrl.text.trim(), 
-            password: passwordCtrl.text.trim(), 
-            role: 'User' // always assigned as User in Global Registration
-        )
-      );
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Registration Successfully')
-        )
-      );
-      Navigator.pop(context);
+      setState(() => _isLoading = true);
+
+      try{
+        await _supabase.auth.signUp(
+            email: emailCtrl.text.trim(),
+            password: passwordCtrl.text,
+          data: {
+              'full_name': fullnameCtrl.text.trim(),
+              'role': 'User'
+          },
+        );
+
+        if (mounted){
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Registration successful! Please login.')),
+            );
+            Navigator.pop(context);
+          }
+        } on AuthException catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.message), backgroundColor: Colors.red,),
+        );
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('User Registration'),
-        backgroundColor: Colors.blue,
-      ),
+      appBar: AppBar(title: const Text('User Registration')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
-            child: ListView(
-              children: [
-                TextFormField(
-                  controller: usernameCtrl,
-                  decoration: const InputDecoration(labelText: 'Username',hint: Text('enter username here')),
-                  validator: (value){
-                    if (value == null || value.isEmpty){
-                      return 'Do not leave blank';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12,),
-                TextFormField(
-                  controller: fullnameCtrl,
-                  decoration: const InputDecoration(labelText: 'Full Name',hint: Text('enter name here')),
-                  validator: (value){
-                    if (value == null || value.isEmpty){
-                      return 'Do not leave blank';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12,),
-                TextFormField(
-                  controller: passwordCtrl,
-                  decoration: const InputDecoration(labelText: 'Password',hint: Text('enter password here')),
-                  validator: _validatePassword,
-                  obscureText: true,
-                ),
-                const SizedBox(height: 12,),
-                ElevatedButton(
-                    onPressed: _register, 
-                    child: const Text('Register Now')
-                )
-              ],
-            )
+          child: ListView(
+            children: [
+              TextFormField(
+                controller: emailCtrl,
+                decoration: const InputDecoration(labelText: 'Email Address'),
+                validator: (val) => val == null || val.isEmpty || !val.contains('@') ? 'Enter a valid email' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: fullnameCtrl,
+                decoration: const InputDecoration(labelText: 'Full Name'),
+                validator: (val) => val == null || val.isEmpty ? 'Enter your full name' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: passwordCtrl,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Password'),
+                validator: _validatePassword,
+              ),
+              const SizedBox(height: 24),
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ElevatedButton(
+                onPressed: _register,
+                child: const Text('Register'),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import '../models/user_model.dart';
+// Note: We no longer need user_model.dart since we are using Supabase
 import '../menus/customer_menu.dart';
 import '../menus/staff_menu.dart';
-import  'register_screen.dart';
+import 'register_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,67 +14,98 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _supabase = Supabase.instance.client;
 
   String _selectedRole = "User";
+  bool _isLoading = false; // Added to handle loading state
 
-  final TextEditingController _usernameCtrl = TextEditingController();
+  // Changed to email controller because Supabase requires emails
+  final TextEditingController _emailCtrl = TextEditingController();
   final TextEditingController _passwordCtrl = TextEditingController();
 
-  void _login(){
-    if (_formKey.currentState!.validate()){
-      final _username = _usernameCtrl.text.trim();
-      final _password = _passwordCtrl.text;
+  Future<void> _login() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
 
-      final matchingUser = mockUserDatabase.firstWhere(
-          (u) => u.username.toUpperCase() == _username.toUpperCase() &&
-              u.password == _password &&
-              u.role == _selectedRole,
+      final email = _emailCtrl.text.trim();
+      final password = _passwordCtrl.text;
 
-        orElse: () => AppUser(
-            username: '',
-            fullName: '',
-            password: '',
-            role: ''
-        )
-      );
+      try {
+        // 1. Authenticate with Supabase
+        final response = await _supabase.auth.signInWithPassword(
+          email: email,
+          password: password,
+        );
 
-      if (matchingUser.username.isEmpty){
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Error'),
-            content: const Text('Invalid username, password or role'),
-            actions: [
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Close'),
+        final user = response.user;
+        if (user != null) {
+          // 2. Check the role and get the full name from metadata
+          final userRole = user.userMetadata?['role'] ?? 'User';
+          final fullName = user.userMetadata?['full_name'] ?? 'Unknown';
+
+          // 3. Verify they selected the correct role
+          if (userRole != _selectedRole) {
+            await _supabase.auth.signOut(); // Log out immediately if wrong role
+            _showErrorDialog('Incorrect role selected for this account.');
+            setState(() => _isLoading = false);
+            return;
+          }
+
+          // 4. Navigate to correct menu
+          if (!mounted) return;
+          if (_selectedRole == 'Staff') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => StaffMenu(name: fullName),
               ),
-            ],
-          ),
-        );
-        return;
-      }
-
-      if(_selectedRole == 'Staff'){
-        Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => StaffMenu(name: matchingUser.fullName)
-            ),
-        );
-      } else {
-        Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (_) => CustomerMenu(name: matchingUser.fullName),
-            )
-        );
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => CustomerMenu(name: fullName),
+              ),
+            );
+          }
+        }
+      } on AuthException catch (e) {
+        // Show Supabase specific errors (e.g., Invalid login credentials)
+        _showErrorDialog(e.message);
+      } catch (e) {
+        _showErrorDialog('An unexpected error occurred.');
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
   }
 
-  void swipe(){
+  // Helper method to keep your original error dialog style clean
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void swipe() {
     setState(() {
-      if(_selectedRole == 'User'){
+      if (_selectedRole == 'User') {
         _selectedRole = 'Staff';
         return;
       }
@@ -100,26 +132,32 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   Container(
                     color: Colors.grey,
-                    child: Text(_selectedRole, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 40),),
                     height: 80,
                     width: 120,
+                    alignment: Alignment.center, // Centered your text visually
+                    child: Text(
+                      _selectedRole,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 40),
+                    ),
                   ),
+                  const SizedBox(width: 16), // Added spacing between UI elements
                   ElevatedButton.icon(
-                      onPressed: swipe,
-                      icon: const Icon(Icons.change_circle),
+                    onPressed: swipe,
+                    icon: const Icon(Icons.change_circle),
                     label: const Text('Swap Role'),
                   )
                 ],
               ),
               const SizedBox(height: 12),
               TextFormField(
-                controller: _usernameCtrl,
+                controller: _emailCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Username',
+                  labelText: 'Email Address', // Updated label
                 ),
-                validator: (val){
-                  if(val == null || val.isEmpty){
-                    return 'Enter username';
+                validator: (val) {
+                  if (val == null || val.isEmpty) {
+                    return 'Enter email';
                   }
                   return null;
                 },
@@ -131,32 +169,34 @@ class _LoginScreenState extends State<LoginScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Password',
                 ),
-                validator: (val){
-                  if(val == null || val.isEmpty){
+                validator: (val) {
+                  if (val == null || val.isEmpty) {
                     return 'Enter password';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
-                  onPressed: _login,
-                  child: Text('Login')
+              _isLoading
+                  ? const CircularProgressIndicator()
+                  : ElevatedButton(
+                onPressed: _login,
+                child: const Text('Login'),
               ),
-              if(_selectedRole == 'User')
+              if (_selectedRole == 'User')
                 TextButton(
-                    onPressed: (){
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => RegisterScreen()
-                          )
-                      );
-                    },
-                  child: Text('Don\'t have an account? Register here'),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const RegisterScreen(),
+                      ),
+                    );
+                  },
+                  child: const Text('Don\'t have an account? Register here'),
                 )
             ],
-          )
+          ),
         ),
       ),
     );

@@ -14,13 +14,13 @@ class AppUser{
 
 List<AppUser> mockUserDatabase = [
   AppUser(
-      username: 'admin',
+      username: 'admin@gmail.com',
       fullName: 'Booi Ah Heng',
       password: 'Admin12345@',
       role: 'Staff'
   ),
   AppUser(
-      username: 'user',
+      username: 'user@gmail.com',
       fullName: 'Ger Ah Heng',
       password: 'User12345@',
       role: 'User'
