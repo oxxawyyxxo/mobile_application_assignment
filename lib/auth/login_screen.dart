@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-// Note: We no longer need user_model.dart since we are using Supabase
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../menus/customer_menu.dart';
 import '../menus/staff_menu.dart';
 import 'register_screen.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,85 +16,95 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _supabase = Supabase.instance.client;
 
-  String _selectedRole = "User";
-  bool _isLoading = false; // Added to handle loading state
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
 
-  // Changed to email controller because Supabase requires emails
-  final TextEditingController _emailCtrl = TextEditingController();
-  final TextEditingController _passwordCtrl = TextEditingController();
+  String _selectedRole = 'User';
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _login() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
+    if (!_formKey.currentState!.validate()) return;
 
-      final email = _emailCtrl.text.trim();
-      final password = _passwordCtrl.text;
+    setState(() => _isLoading = true);
 
-      try {
-        // 1. Authenticate with Supabase
-        final response = await _supabase.auth.signInWithPassword(
-          email: email,
-          password: password,
+    final email = _emailCtrl.text.trim();
+    final password = _passwordCtrl.text;
+
+    try {
+      final response = await _supabase.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+
+      final user = response.user;
+
+      if (user == null) return;
+
+      final userRole = user.userMetadata?['role'] ?? 'User';
+      final fullName = user.userMetadata?['full_name'] ?? 'Unknown';
+
+      if (userRole != _selectedRole) {
+        await _supabase.auth.signOut();
+
+        if (!mounted) return;
+
+        _showErrorDialog(
+          'This account is registered as $userRole. '
+              'Please select the correct role.',
         );
 
-        final user = response.user;
-        if (user != null) {
-          // 2. Check the role and get the full name from metadata
-          final userRole = user.userMetadata?['role'] ?? 'User';
-          final fullName = user.userMetadata?['full_name'] ?? 'Unknown';
+        return;
+      }
 
-          // 3. Verify they selected the correct role
-          if (userRole != _selectedRole) {
-            await _supabase.auth.signOut(); // Log out immediately if wrong role
-            _showErrorDialog('Incorrect role selected for this account.');
-            setState(() => _isLoading = false);
-            return;
-          }
+      if (!mounted) return;
 
-          // 4. Navigate to correct menu
-          if (!mounted) return;
-          if (_selectedRole == 'Staff') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => StaffMenu(name: fullName),
-              ),
-            );
-          } else {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => CustomerMenu(name: fullName),
-              ),
-            );
-          }
-        }
-      } on AuthException catch (e) {
-        // Show Supabase specific errors (e.g., Invalid login credentials)
+      if (_selectedRole == 'Staff') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => StaffMenu(name: fullName),
+          ),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => CustomerMenu(name: fullName),
+          ),
+        );
+      }
+    } on AuthException catch (e) {
+      if (mounted) {
         _showErrorDialog(e.message);
-      } catch (e) {
+      }
+    } catch (_) {
+      if (mounted) {
         _showErrorDialog('An unexpected error occurred.');
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
   }
 
-  // Helper method to keep your original error dialog style clean
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Error'),
+        icon: const Icon(Icons.error_outline),
+        title: const Text('Unable to sign in'),
         content: Text(message),
         actions: [
-          ElevatedButton(
+          TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Close'),
           ),
@@ -103,99 +113,214 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void swipe() {
-    setState(() {
-      if (_selectedRole == 'User') {
-        _selectedRole = 'Staff';
-        return;
-      }
-      _selectedRole = 'User';
-      return;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Login Screen'),
-        backgroundColor: Colors.blue,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Row(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: 420,
+            ),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    color: Colors.grey,
-                    height: 80,
-                    width: 120,
-                    alignment: Alignment.center, // Centered your text visually
-                    child: Text(
-                      _selectedRole,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 40),
+                  // Logo / icon
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(
+                        Icons.lock_outline_rounded,
+                        size: 28,
+                        color: colorScheme.onPrimaryContainer,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 16), // Added spacing between UI elements
-                  ElevatedButton.icon(
-                    onPressed: swipe,
-                    icon: const Icon(Icons.change_circle),
-                    label: const Text('Swap Role'),
-                  )
+
+                  const SizedBox(height: 28),
+
+                  Text(
+                    'Welcome back',
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  Text(
+                    'Sign in to continue to your account.',
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  Text(
+                    'Account type',
+                    style: theme.textTheme.labelLarge,
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // Role selector
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(
+                        value: 'User',
+                        icon: Icon(Icons.person_outline),
+                        label: Text('User'),
+                      ),
+                      ButtonSegment(
+                        value: 'Staff',
+                        icon: Icon(Icons.badge_outlined),
+                        label: Text('Staff'),
+                      ),
+                    ],
+                    selected: {_selectedRole},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (selection) {
+                      setState(() {
+                        _selectedRole = selection.first;
+                      });
+                    },
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  // Email
+                  TextFormField(
+                    controller: _emailCtrl,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [
+                      AutofillHints.email,
+                    ],
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      hintText: 'name@example.com',
+                      prefixIcon: Icon(Icons.mail_outline_rounded),
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Enter your email address';
+                      }
+
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Password
+                  TextFormField(
+                    controller: _passwordCtrl,
+                    obscureText: _obscurePassword,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: const [
+                      AutofillHints.password,
+                    ],
+                    onFieldSubmitted: (_) {
+                      if (!_isLoading) {
+                        _login();
+                      }
+                    },
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      prefixIcon:
+                      const Icon(Icons.lock_outline_rounded),
+                      suffixIcon: IconButton(
+                        tooltip: _obscurePassword
+                            ? 'Show password'
+                            : 'Hide password',
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword =
+                            !_obscurePassword;
+                          });
+                        },
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                        ),
+                      ),
+                      border: const OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Enter your password';
+                      }
+
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Login button
+                  SizedBox(
+                    height: 52,
+                    child: FilledButton(
+                      onPressed: _isLoading ? null : _login,
+                      child: _isLoading
+                          ? SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: colorScheme.onPrimary,
+                        ),
+                      )
+                          : const Text('Sign in'),
+                    ),
+                  ),
+
+                  // Registration
+                  if (_selectedRole == 'User') ...[
+                    const SizedBox(height: 16),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'New here?',
+                          style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                const RegisterScreen(),
+                              ),
+                            );
+                          },
+                          child: const Text('Create account'),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _emailCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Email Address', // Updated label
-                ),
-                validator: (val) {
-                  if (val == null || val.isEmpty) {
-                    return 'Enter email';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _passwordCtrl,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                ),
-                validator: (val) {
-                  if (val == null || val.isEmpty) {
-                    return 'Enter password';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-              _isLoading
-                  ? const CircularProgressIndicator()
-                  : ElevatedButton(
-                onPressed: _login,
-                child: const Text('Login'),
-              ),
-              if (_selectedRole == 'User')
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const RegisterScreen(),
-                      ),
-                    );
-                  },
-                  child: const Text('Don\'t have an account? Register here'),
-                )
-            ],
+            ),
           ),
         ),
       ),
