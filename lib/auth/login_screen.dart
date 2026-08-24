@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-// Note: We no longer need user_model.dart since we are using Supabase
+import '../main.dart';
 import '../menus/customer_menu.dart';
 import '../menus/staff_menu.dart';
 import 'register_screen.dart';
@@ -41,12 +41,25 @@ class _LoginScreenState extends State<LoginScreen> {
 
         final user = response.user;
         if (user != null) {
-          // 2. Check the role and get the full name from metadata
-          final userRole = user.userMetadata?['role'] ?? 'User';
-          final fullName = user.userMetadata?['full_name'] ?? 'Unknown';
+          // 2. Fetch the role and full name from the user_profiles table
+          final profileData = await _supabase
+              .from('user_profiles')
+              .select('role, full_name')
+              .eq('id', user.id)
+              .maybeSingle();
 
-          // 3. Verify they selected the correct role
-          if (userRole != _selectedRole) {
+          if (profileData == null) {
+            await _supabase.auth.signOut();
+            _showErrorDialog('User profile not found in database.');
+            setState(() => _isLoading = false);
+            return;
+          }
+
+          final String userRole = profileData['role'] ?? 'User';
+          final String fullName = profileData['full_name'] ?? 'Unknown';
+
+          // 3. Verify they selected the correct role (case-insensitive)
+          if (userRole.toLowerCase() != _selectedRole.toLowerCase()) {
             await _supabase.auth.signOut(); // Log out immediately if wrong role
             _showErrorDialog('Incorrect role selected for this account.');
             setState(() => _isLoading = false);
@@ -55,7 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
           // 4. Navigate to correct menu
           if (!mounted) return;
-          if (_selectedRole == 'Staff') {
+          if (userRole.toLowerCase() == 'staff') {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
@@ -75,7 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
         // Show Supabase specific errors (e.g., Invalid login credentials)
         _showErrorDialog(e.message);
       } catch (e) {
-        _showErrorDialog('An unexpected error occurred.');
+        _showErrorDialog('An unexpected error occurred: $e');
       } finally {
         if (mounted) {
           setState(() {
@@ -194,7 +207,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     );
                   },
                   child: const Text('Don\'t have an account? Register here'),
-                )
+                ),
+              SizedBox(height: 30),
+              ElevatedButton(
+                onPressed: () async {
+                  await AuthSeeder.initializeMockUsers();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Mock users initialized in Supabase!')),
+                    );
+                  }
+                },
+                child: const Text('Seed Admin & User Accounts'),
+              )
             ],
           ),
         ),

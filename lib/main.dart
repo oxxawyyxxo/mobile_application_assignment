@@ -3,6 +3,8 @@ import 'package:mobile_application_assignment/auth/login_screen.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'models/user_model.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -42,5 +44,42 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
     );
+  }
+}
+
+class AuthSeeder {
+  static final _supabase = Supabase.instance.client;
+
+  // Your mock list
+  static final List<AppUser> mockUserDatabase = [
+    AppUser(username: 'admin@gmail.com', fullName: 'Booi Ah Heng', password: 'Admin12345@', role: 'Staff'),
+    AppUser(username: 'user@gmail.com', fullName: 'Ger Ah Heng', password: 'User12345@', role: 'User')
+  ];
+
+  static Future<void> initializeMockUsers() async {
+    for (var user in mockUserDatabase) {
+      try {
+        // 1. Create the user in Supabase Auth
+        final AuthResponse res = await _supabase.auth.signUp(
+          email: user.username,
+          password: user.password,
+        );
+
+        final String? userId = res.user?.id;
+
+        // 2. Insert their profile and role into user_profiles
+        if (userId != null) {
+          await _supabase.from('user_profiles').upsert({
+            'id': userId,
+            'full_name': user.fullName,
+            'role': user.role,
+            'points': user.role == 'User' ? 500 : 0, // Give the user some test points
+          });
+          print('Successfully created: ${user.username}');
+        }
+      } catch (e) {
+        print('Failed to create ${user.username}: $e (They might already exist)');
+      }
+    }
   }
 }
