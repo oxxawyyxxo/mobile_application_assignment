@@ -4,7 +4,7 @@ import 'package:mobile_application_assignment/auth/login_screen.dart';
 class StaffMenu extends StatefulWidget {
   final String name;
 
-  const StaffMenu({Key? key, required this.name}) : super(key: key);
+  const StaffMenu({super.key, required this.name});
 
   @override
   State<StaffMenu> createState() => _StaffMenuState();

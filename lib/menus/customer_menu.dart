@@ -4,7 +4,7 @@ import 'package:mobile_application_assignment/auth/login_screen.dart';
 class CustomerMenu extends StatefulWidget {
   final String name;
 
-  const CustomerMenu({Key? key, required this.name}) : super(key: key);
+  const CustomerMenu({super.key, required this.name});
 
   @override
   State<CustomerMenu> createState() => _CustomerMenuState();
