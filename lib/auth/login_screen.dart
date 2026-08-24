@@ -132,33 +132,35 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Logo / icon
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(16),
+                  Row(
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Icon(
+                          Icons.lock_outline_rounded,
+                          size: 28,
+                          color: colorScheme.onPrimaryContainer,
+                        ),
                       ),
-                      child: Icon(
-                        Icons.lock_outline_rounded,
-                        size: 28,
-                        color: colorScheme.onPrimaryContainer,
+
+                      SizedBox(width: 20),
+
+                      Text(
+                        'Welcome back',
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
+                    ],
                   ),
 
-                  const SizedBox(height: 28),
 
-                  Text(
-                    'Welcome back',
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 20),
 
                   Text(
                     'Sign in to continue to your account.',
@@ -168,13 +170,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
 
                   const SizedBox(height: 32),
-
-                  Text(
-                    'Account type',
-                    style: theme.textTheme.labelLarge,
-                  ),
-
-                  const SizedBox(height: 10),
 
                   // Role selector
                   SegmentedButton<String>(
@@ -284,7 +279,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
                           color: colorScheme.onPrimary,
-                        ),
+                        )
                       )
                           : const Text('Sign in'),
                     ),
