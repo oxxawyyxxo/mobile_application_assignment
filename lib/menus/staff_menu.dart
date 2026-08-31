@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mobile_application_assignment/auth/login_screen.dart';
 
 import '../screens/admin_petrol_screen.dart';
+import '../screens/admin_refund_screen.dart';
 
 class StaffMenu extends StatefulWidget {
   final String name;
@@ -65,6 +66,30 @@ class _StaffMenuState extends State<StaffMenu> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const AdminPetrolScreen()),
+                );
+              },
+            ),
+          ),
+          Card(
+            elevation: 4,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: ListTile(
+              contentPadding: const EdgeInsets.all(16),
+              leading: const CircleAvatar(
+                radius: 25,
+                backgroundColor: Colors.blue,
+                child: Icon(Icons.request_quote, color: Colors.white, size: 28),
+              ),
+              title: const Text(
+                'Refund Requests',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              subtitle: const Text('Approve/Deny Refund'),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminRefundScreen()),
                 );
               },
             ),

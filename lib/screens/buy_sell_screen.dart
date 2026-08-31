@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../widgets/app_bottom_nav.dart';
+import '../widgets/back_to_menu.dart';
 
 enum TradeSide { buy, sell }
 
@@ -85,6 +87,16 @@ class _BuySellScreenState extends State<BuySellScreen> {
     return val * widget.currentPrice;
   }
 
+  // Switches to "by shares" mode and fills the exact held quantity, so the
+  // sell RPC receives p_quantity directly rather than a derived RM amount -
+  // avoids rounding mismatches that could leave a dust balance behind.
+  void _fillSellAll() {
+    setState(() {
+      _mode = EntryMode.byShares;
+      _inputCtrl.text = _heldQuantity.toString();
+    });
+  }
+
   Future<void> _confirmTrade() async {
     final rawInput = double.tryParse(_inputCtrl.text);
     if (rawInput == null || rawInput <= 0) {
@@ -150,7 +162,14 @@ class _BuySellScreenState extends State<BuySellScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('${widget.symbol} · Trade')),
+      appBar: AppBar(
+        title: Text('${widget.symbol} · Trade'),
+        actions: const [
+          BackToCustomerMenuButton(),
+          SizedBox(width: 8),
+        ],
+      ),
+      bottomNavigationBar: const AppBottomNav(currentIndex: 2),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -256,6 +275,22 @@ class _BuySellScreenState extends State<BuySellScreen> {
                 hintText: _mode == EntryMode.byAmount ? '0.00' : '0.0000',
               ),
             ),
+
+            // Sell All quick action - only relevant when selling and holding something
+            if (_side == TradeSide.sell && _heldQuantity > 0) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: _fillSellAll,
+                  icon: const Icon(Icons.playlist_remove, size: 18),
+                  label: Text(
+                    'Sell All (${_heldQuantity.toStringAsFixed(4)} shares)',
+                  ),
+                ),
+              ),
+            ],
+
             const SizedBox(height: 16),
 
             // Live preview

@@ -18,7 +18,6 @@ class CustomerMenu extends StatefulWidget {
 
 class _CustomerMenuState extends State<CustomerMenu> {
   final _supabase = Supabase.instance.client;
-  RealtimeChannel? _subscription;
 
   @override
   void initState() {
@@ -88,7 +87,7 @@ class _CustomerMenuState extends State<CustomerMenu> {
           ),
           const SizedBox(height: 12),
           ElevatedButton.icon(
-            icon: const Icon(Icons.history),
+            icon: const Icon(Icons.show_chart),
             label: const Text('Markets & Trading'),
             onPressed: () => Navigator.push(
               context,

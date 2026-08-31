@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/stock_price_model.dart';
 import '../services/stock_data_service.dart';
-import 'topup_screen.dart';
 import 'buy_sell_screen.dart';
+import '../widgets/app_bottom_nav.dart';
+import '../widgets/back_to_menu.dart';
 
 enum Timeframe { fiveDay, oneMonth, threeMonth, sixMonth, oneYear, fiveYear, all }
 
@@ -156,15 +157,13 @@ class _StockChartScreenState extends State<StockChartScreen> {
     }
   }
 
-  void _openTopUp() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const TopUpScreen()),
-    );
-  }
-
   void _openTrade() {
-    if (_latestPrice == null) return;
+    if (_latestPrice == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please wait for the price to load.')),
+      );
+      return;
+    }
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -181,23 +180,15 @@ class _StockChartScreenState extends State<StockChartScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('$_symbol Price Chart'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.account_balance_wallet_outlined),
-            tooltip: 'Top Up',
-            onPressed: _openTopUp,
-          ),
-          IconButton(
-            icon: const Icon(Icons.search),
-            tooltip: 'Search stocks',
-            onPressed: _openSearch,
-          ),
+        actions: const [
+          BackToCustomerMenuButton(),
+          SizedBox(width: 8),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _latestPrice == null ? null : _openTrade,
-        icon: const Icon(Icons.swap_horiz),
-        label: const Text('Trade'),
+      bottomNavigationBar: AppBottomNav(
+        currentIndex: 0,
+        onSearch: _openSearch,
+        onTrade: _openTrade,
       ),
       body: Column(
         children: [
@@ -405,7 +396,7 @@ class _StockChartScreenState extends State<StockChartScreen> {
           HorizontalRangeAnnotation(
             y1: currentPrice - range * 0.0015,
             y2: currentPrice + range * 0.0015,
-            color: Colors.blue.withOpacity(0.4),
+            color: Colors.blue.withValues(alpha: 0.4),
           ),
         ],
       ),
@@ -434,8 +425,6 @@ class _StockChartScreenState extends State<StockChartScreen> {
   }
 }
 
-/// Search bottom sheet with the top-20 stock list, embedded in this file
-/// so everything lives inside stock_chart_screen.dart.
 class _StockSearchSheet extends StatefulWidget {
   const _StockSearchSheet();
 

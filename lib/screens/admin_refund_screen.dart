@@ -1,0 +1,323 @@
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class AdminRefundScreen extends StatefulWidget {
+  const AdminRefundScreen({super.key});
+
+  @override
+  State<AdminRefundScreen> createState() => _AdminRefundScreenState();
+}
+
+class _AdminRefundScreenState extends State<AdminRefundScreen>
+    with SingleTickerProviderStateMixin {
+  final _supabase = Supabase.instance.client;
+  late TabController _tabController;
+
+  late Future<List<Map<String, dynamic>>> _pendingFuture;
+  late Future<List<Map<String, dynamic>>> _historyFuture;
+
+  // Formats a UTC DateTime as UTC+08:00, matching the portfolio screen.
+  static String _formatUtc8(DateTime utcTime) {
+    final local = utcTime.toUtc().add(const Duration(hours: 8));
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final hour12 = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final period = local.hour < 12 ? 'AM' : 'PM';
+    final minute = local.minute.toString().padLeft(2, '0');
+    return '${local.day} ${months[local.month - 1]} ${local.year}, '
+        '$hour12:$minute $period (UTC+8)';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _pendingFuture = _fetchRequests(status: 'pending');
+    _historyFuture = _fetchRequests(status: null);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  // Joins refund_requests with the requesting user's email for display.
+  // Requires the "Admins can view all refund requests" RLS policy.
+  Future<List<Map<String, dynamic>>> _fetchRequests({String? status}) async {
+    var query = _supabase.from('refund_requests').select(
+        'id, user_id, amount, status, reason, created_at, reviewed_at');
+
+    if (status != null) {
+      query = query.eq('status', status);
+    } else {
+      query = query.neq('status', 'pending');
+    }
+
+    final rows = await query.order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _pendingFuture = _fetchRequests(status: 'pending');
+      _historyFuture = _fetchRequests(status: null);
+    });
+  }
+
+  Future<void> _review(String requestId, bool approve) async {
+    String? reason;
+
+    if (!approve) {
+      reason = await showDialog<String>(
+        context: context,
+        builder: (context) {
+          final ctrl = TextEditingController();
+          return AlertDialog(
+            title: const Text('Reason for Denial'),
+            content: TextField(
+              controller: ctrl,
+              decoration: const InputDecoration(
+                hintText: 'Optional note for the user',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, ctrl.text),
+                child: const Text('Deny'),
+              ),
+            ],
+          );
+        },
+      );
+      if (reason == null) return; // cancelled
+    } else {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Approve Refund'),
+          content: const Text(
+            'This will deduct the refunded amount from the user\'s credit balance. Continue?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Approve'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+
+    try {
+      await _supabase.rpc('review_refund_request', params: {
+        'p_request_id': requestId,
+        'p_approve': approve,
+        'p_reason': reason,
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(approve ? 'Refund approved.' : 'Refund denied.'),
+          backgroundColor: approve ? Colors.green : Colors.orange,
+        ),
+      );
+      _refresh();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Refund Requests'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Pending'),
+            Tab(text: 'History'),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildPendingList(),
+          _buildHistoryList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPendingList() {
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _pendingFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          final requests = snapshot.data ?? [];
+          if (requests.isEmpty) {
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: const [
+                Padding(
+                  padding: EdgeInsets.only(top: 80),
+                  child: Center(child: Text('No pending refund requests.')),
+                ),
+              ],
+            );
+          }
+
+          return ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: requests.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final r = requests[index];
+              final id = r['id'] as String;
+              final amount = (r['amount'] as num).toDouble();
+              final createdAt = DateTime.parse(r['created_at'] as String);
+              final userId = r['user_id'] as String;
+
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'RM ${amount.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Text('User: $userId',
+                          style: const TextStyle(fontSize: 12)),
+                      Text(
+                        'Requested: ${_formatUtc8(createdAt)}',
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.grey.shade600),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => _review(id, false),
+                              style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.red),
+                              child: const Text('Deny'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: () => _review(id, true),
+                              style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.green),
+                              child: const Text('Approve'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildHistoryList() {
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _historyFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          final requests = snapshot.data ?? [];
+          if (requests.isEmpty) {
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: const [
+                Padding(
+                  padding: EdgeInsets.only(top: 80),
+                  child: Center(child: Text('No reviewed requests yet.')),
+                ),
+              ],
+            );
+          }
+
+          return ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: requests.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final r = requests[index];
+              final amount = (r['amount'] as num).toDouble();
+              final status = r['status'] as String;
+              final reason = r['reason'] as String?;
+              final reviewedAt = r['reviewed_at'] != null
+                  ? DateTime.parse(r['reviewed_at'] as String)
+                  : null;
+              final isApproved = status == 'approved';
+
+              return Card(
+                child: ListTile(
+                  leading: Icon(
+                    isApproved ? Icons.check_circle : Icons.cancel,
+                    color: isApproved ? Colors.green : Colors.red,
+                  ),
+                  title: Text('RM ${amount.toStringAsFixed(2)} · ${status[0].toUpperCase()}${status.substring(1)}'),
+                  subtitle: Text(
+                    [
+                      if (reviewedAt != null)
+                        'Reviewed: ${_formatUtc8(reviewedAt)}',
+                      if (reason != null && reason.isNotEmpty) 'Note: $reason',
+                    ].join('\n'),
+                  ),
+                  isThreeLine: reason != null && reason.isNotEmpty,
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
