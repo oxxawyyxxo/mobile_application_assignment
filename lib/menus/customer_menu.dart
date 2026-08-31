@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../screens/petrol_chart_screen.dart';
 import '../screens/buy_petrol_screen.dart';
 import '../screens/petrol_history_screen.dart';
+import '../screens/stock_chart_screen.dart';
 
 class CustomerMenu extends StatefulWidget {
   final String name;
@@ -83,6 +84,15 @@ class _CustomerMenuState extends State<CustomerMenu> {
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const PetrolHistoryScreen()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.history),
+            label: const Text('Markets & Trading'),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const StockChartScreen()),
             ),
           ),
           const SizedBox(height: 12),
