@@ -67,9 +67,13 @@ class _TopUpScreenState extends State<TopUpScreen> {
         _amountCtrl.clear();
       });
 
+      final pointsEarned = amount.floor(); // matches the SQL floor(p_amount)
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Top up successful! +RM ${amount.toStringAsFixed(2)}'),
+          content: Text(
+            'Top up successful! +RM ${amount.toStringAsFixed(2)} · +$pointsEarned pts',
+          ),
           backgroundColor: Colors.green,
         ),
       );
