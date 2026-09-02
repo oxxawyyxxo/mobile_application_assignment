@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
+import '../main.dart';
 import '../menus/customer_menu.dart';
 import '../menus/staff_menu.dart';
 import 'register_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,12 +16,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _supabase = Supabase.instance.client;
 
-  final _emailCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
-
-  String _selectedRole = 'User';
-  bool _isLoading = false;
+  String _selectedRole = "User";
+  bool _isLoading = false; // Added to handle loading state
   bool _obscurePassword = true;
+
+  // Changed to email controller because Supabase requires emails
+  final TextEditingController _emailCtrl = TextEditingController();
+  final TextEditingController _passwordCtrl = TextEditingController();
 
   @override
   void dispose() {
@@ -31,67 +32,77 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
 
-    setState(() => _isLoading = true);
+      final email = _emailCtrl.text.trim();
+      final password = _passwordCtrl.text;
 
-    final email = _emailCtrl.text.trim();
-    final password = _passwordCtrl.text;
-
-    try {
-      final response = await _supabase.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
-
-      final user = response.user;
-
-      if (user == null) return;
-
-      final userRole = user.userMetadata?['role'] ?? 'User';
-      final fullName = user.userMetadata?['full_name'] ?? 'Unknown';
-
-      if (userRole != _selectedRole) {
-        await _supabase.auth.signOut();
-
-        if (!mounted) return;
-
-        _showErrorDialog(
-          'This account is registered as $userRole. '
-              'Please select the correct role.',
+      try {
+        // 1. Authenticate with Supabase
+        final response = await _supabase.auth.signInWithPassword(
+          email: email,
+          password: password,
         );
 
-        return;
-      }
+        final user = response.user;
+        if (user != null) {
+          // 2. Fetch the role and full name from the user_profiles table
+          final profileData = await _supabase
+              .from('user_profiles')
+              .select('role, full_name')
+              .eq('id', user.id)
+              .maybeSingle();
 
-      if (!mounted) return;
+          if (profileData == null) {
+            await _supabase.auth.signOut();
+            _showErrorDialog('User profile not found in database.');
+            setState(() => _isLoading = false);
+            return;
+          }
 
-      if (_selectedRole == 'Staff') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => StaffMenu(name: fullName),
-          ),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => CustomerMenu(name: fullName),
-          ),
-        );
-      }
-    } on AuthException catch (e) {
-      if (mounted) {
+          final String userRole = profileData['role'] ?? 'User';
+          final String fullName = profileData['full_name'] ?? 'Unknown';
+
+          // 3. Verify they selected the correct role (case-insensitive)
+          if (userRole.toLowerCase() != _selectedRole.toLowerCase()) {
+            await _supabase.auth.signOut(); // Log out immediately if wrong role
+            _showErrorDialog('Incorrect role selected for this account.');
+            setState(() => _isLoading = false);
+            return;
+          }
+
+          // 4. Navigate to correct menu
+          if (!mounted) return;
+          if (userRole.toLowerCase() == 'staff') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => StaffMenu(name: fullName),
+              ),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => CustomerMenu(name: fullName),
+              ),
+            );
+          }
+        }
+      } on AuthException catch (e) {
+        // Show Supabase specific errors (e.g., Invalid login credentials)
         _showErrorDialog(e.message);
-      }
-    } catch (_) {
-      if (mounted) {
-        _showErrorDialog('An unexpected error occurred.');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
+      } catch (e) {
+        _showErrorDialog('An unexpected error occurred: $e');
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
   }
