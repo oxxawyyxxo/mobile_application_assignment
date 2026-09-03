@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/petrol_service.dart';
 
@@ -125,12 +126,18 @@ class _BuyPetrolScreenState extends State<BuyPetrolScreen> {
         showDialog(
           context: context,
           builder: (_) => AlertDialog(
-            title: const Text('Purchase Failed'),
+            title: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.red, size: 30),
+                const SizedBox(width: 10),
+                const Text('Purchase Failed', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
+            ),
             content: Text(error),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('OK'),
+                child: const Text('Close'),
               ),
             ],
           ),
@@ -171,110 +178,206 @@ class _BuyPetrolScreenState extends State<BuyPetrolScreen> {
     }
   }
 
+  void _showRedeemPointsDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        final theme = Theme.of(context);
+        final colorScheme = theme.colorScheme;
+
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.info, color: colorScheme.primary, size: 30),
+
+              SizedBox(width: 10),
+
+              const Text('Points Info', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: const Text('Spend RM 1 = Gain 1 point\n\n'
+                              'Spend 100 points = Discount RM 1'
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      }
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final finalTotal = _rawTotal - _discountAmount;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Buy Petrol')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // User Balance Card
-            Card(
-              color: Colors.blue.shade50,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    const Text('Your Membership Balance', style: TextStyle(fontSize: 16)),
-                    Text(
-                      '$_currentPoints Points',
-                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.blue),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // App Bar replacement
+              Row(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    const Text('Earn 1 point for every RM 1 spent!'),
-                  ],
+                    child: IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.arrow_back),
+                      tooltip: 'Back',
+                    ),
+                  ),
+
+                  SizedBox(width: 20),
+
+                  Text(
+                    'Buy Petrol',
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  Spacer(),
+
+                  IconButton(
+                    onPressed: () => _showRedeemPointsDialog(),
+                    icon: Icon(Icons.info, color: colorScheme.primary ,size: 40)
+                  )
+                ],
+              ),
+
+
+              const SizedBox(height: 20),
+
+              // User Balance Card
+              Card(
+                color: Colors.blue.shade50,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      const Text('Your Membership Points', style: TextStyle(fontSize: 16)),
+                      Text(
+                        '$_currentPoints Points',
+                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.blue),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-
-            // Fuel Selection
-            DropdownButtonFormField<String>(
-              value: _selectedFuel,
-              items: ['RON 95', 'RON 97', 'Diesel']
-                  .map((type) => DropdownMenuItem(value: type, child: Text(type)))
-                  .toList(),
-              onChanged: (val) {
-                if (val != null) {
-                  setState(() => _selectedFuel = val);
-                  _updateFuelPrice(val);
+              const SizedBox(height: 20),
+        
+              // Fuel Selection
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(
+                    value: 'RON 95',
+                    label: Text('RON 95'),
+                  ),
+                  ButtonSegment(
+                    value: 'RON 97',
+                    label: Text('RON 97'),
+                  ),
+                  ButtonSegment(
+                    value: 'Diesel',
+                    label: Text('Diesel'),
+                  ),
+                ],
+                selected: {_selectedFuel},
+                showSelectedIcon: false,
+                onSelectionChanged: (selection) {
+                  setState(() {
+                    _selectedFuel = selection.first;
+                  });
+                },
+              ),
+              // DropdownButtonFormField<String>(
+              //   value: _selectedFuel,
+              //   items: ['RON 95', 'RON 97', 'Diesel']
+              //       .map((type) => DropdownMenuItem(value: type, child: Text(type)))
+              //       .toList(),
+              //   onChanged: (val) {
+              //     if (val != null) {
+              //       setState(() => _selectedFuel = val);
+              //       _updateFuelPrice(val);
+              //     }
+              //   },
+              //   decoration: const InputDecoration(labelText: 'Fuel Type', border: OutlineInputBorder()),
+              // ),
+              const SizedBox(height: 16),
+        
+              // Litre Input
+              TextField(
+                controller: _litresCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d{0,9}(\.\d{0,2})?'))],
+                decoration: const InputDecoration(
+                  labelText: 'Amount of Litres',
+                  suffixText: 'L',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+        
+              // Point Redemption Toggle
+              CheckboxListTile(
+                title: const Text('Redeem All Points'),
+                value: _redeemPoints,
+                onChanged: _currentPoints >= 100
+                    ? (val) {
+                  setState(() => _redeemPoints = val ?? false);
+                  _calculatePreview();
                 }
-              },
-              decoration: const InputDecoration(labelText: 'Fuel Type', border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 16),
-
-            // Litre Input
-            TextField(
-              controller: _litresCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Amount of Litres',
-                suffixText: 'L',
-                border: OutlineInputBorder(),
+                    : null,
               ),
-            ),
-            const SizedBox(height: 16),
-
-            // Point Redemption Toggle
-            CheckboxListTile(
-              title: const Text('Redeem Points'),
-              subtitle: Text('100 pts = RM 1.00 (Max discount: RM ${_discountAmount.toStringAsFixed(2)})'),
-              value: _redeemPoints,
-              onChanged: _currentPoints >= 100
-                  ? (val) {
-                setState(() => _redeemPoints = val ?? false);
-                _calculatePreview();
-              }
-                  : null,
-            ),
-
-            const Divider(height: 32, thickness: 2),
-
-            const Text('Order Summary', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text('Subtotal:'),
-              Text('RM ${_rawTotal.toStringAsFixed(2)}'),
-            ]),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text('Discount:', style: TextStyle(color: Colors.green)),
-              Text('- RM ${_discountAmount.toStringAsFixed(2)}', style: const TextStyle(color: Colors.green)),
-            ]),
-            const SizedBox(height: 8),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text('Total to Pay:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              Text(
-                'RM ${finalTotal.toStringAsFixed(2)}',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
+        
+              const Divider(height: 32, thickness: 2),
+        
+              const Text('Order Summary', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                const Text('Subtotal:'),
+                Text('RM ${_rawTotal.toStringAsFixed(2)}'),
+              ]),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                const Text('Discount:', style: TextStyle(color: Colors.green)),
+                Text('- RM ${_discountAmount.toStringAsFixed(2)}', style: const TextStyle(color: Colors.green)),
+              ]),
+              const SizedBox(height: 8),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                const Text('Total to Pay:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  'RM ${finalTotal.toStringAsFixed(2)}',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
+                ),
+              ]),
+        
+              const SizedBox(height: 24),
+        
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ElevatedButton(
+                onPressed: _processPurchase,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: const Text('Confirm Purchase', style: TextStyle(fontSize: 16)),
               ),
-            ]),
-
-            const SizedBox(height: 24),
-
-            _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : ElevatedButton(
-              onPressed: _processPurchase,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: const Text('Confirm Purchase', style: TextStyle(fontSize: 16)),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
