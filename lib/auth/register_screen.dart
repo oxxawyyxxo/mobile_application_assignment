@@ -12,55 +12,70 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _supabase = Supabase.instance.client;
-  
+
   final TextEditingController emailCtrl = TextEditingController();
   final TextEditingController fullnameCtrl = TextEditingController();
   final TextEditingController passwordCtrl = TextEditingController();
 
   bool _isLoading = false;
 
-  String? _validatePassword(String? value){
-    if (value == null || value.isEmpty){
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
       return 'Password is required';
     }
-    if(value.length < 8){
-      return  'Password must at least 8 characters long';
+    if (value.length < 8) {
+      return 'Password must at least 8 characters long';
     }
-    if(!value.contains(RegExp(r'[A-Z]'))){
+    if (!value.contains(RegExp(r'[A-Z]'))) {
       return 'Must contain at least 1 uppercase letter';
     }
-    if(!value.contains(RegExp(r'[a-z]'))){
+    if (!value.contains(RegExp(r'[a-z]'))) {
       return 'Must contain at least 1 lower case';
     }
-    if(!value.contains(RegExp(r'[\\!@#$&*~%^().,]'))){
+    if (!value.contains(RegExp(r'[\\!@#$&*~%^().,]'))) {
       return 'Must return at least 1 special character';
     }
     return null;
   }
-  
-  Future<void> _register() async{
-    if(_formKey.currentState!.validate()){
+
+  Future<void> _register() async {
+    if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
 
-      try{
-        await _supabase.auth.signUp(
-            email: emailCtrl.text.trim(),
-            password: passwordCtrl.text,
+      try {
+        // 1. Sign up user in Supabase Auth
+        final AuthResponse response = await _supabase.auth.signUp(
+          email: emailCtrl.text.trim(),
+          password: passwordCtrl.text,
           data: {
-              'full_name': fullnameCtrl.text.trim(),
-              'role': 'User'
+            'full_name': fullnameCtrl.text.trim(),
+            'role': 'User',
           },
         );
 
-        if (mounted){
+        // 2. Explicitly insert into user_profiles table (Backup for trigger)
+        if (response.user != null) {
+          await _supabase.from('user_profiles').upsert({
+            'id': response.user!.id,
+            'email': emailCtrl.text.trim(),
+            'full_name': fullnameCtrl.text.trim(),
+            'role': 'User',
+          });
+        }
+
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Registration successful! Please login.')),
-            );
-            Navigator.pop(context);
-          }
-        } on AuthException catch (e) {
+            const SnackBar(content: Text('Registration successful! Please login.')),
+          );
+          Navigator.pop(context);
+        }
+      } on AuthException catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.message), backgroundColor: Colors.red,),
+          SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Profile Error: ${e.toString()}'), backgroundColor: Colors.red),
         );
       } finally {
         if (mounted) setState(() => _isLoading = false);

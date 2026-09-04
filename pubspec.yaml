@@ -39,6 +39,10 @@ dependencies:
   fl_chart: ^1.2.0
   shared_preferences: ^2.5.5
   sqflite_common_ffi: ^2.4.2+1
+  image_picker: ^1.2.3
+  flutter_image_compress: ^2.5.1
+  http: ^1.6.0
+  webfeed: ^0.7.0
 
 dev_dependencies:
   flutter_test:

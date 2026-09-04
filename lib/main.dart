@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:mobile_application_assignment/auth/login_screen.dart';
-
+import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'models/user_model.dart';
@@ -8,9 +11,14 @@ import 'models/user_model.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  if (Platform.isWindows || Platform.isLinux) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
+
   await Supabase.initialize(
-      url: 'https://rejdgrokuxyeedmkusyi.supabase.co',
-      publishableKey: 'sb_publishable_HH9MCbanXl7hinYWI8R5Cw_4hgdLOMU'
+    url: 'https://rejdgrokuxyeedmkusyi.supabase.co',
+    anonKey: 'sb_publishable_HH9MCbanXl7hinYWI8R5Cw_4hgdLOMU',
   );
 
   runApp(const MyApp());

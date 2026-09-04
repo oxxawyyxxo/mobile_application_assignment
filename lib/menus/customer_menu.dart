@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_application_assignment/auth/login_screen.dart';
+import 'package:mobile_application_assignment/screens/global_news_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../screens/petrol_chart_screen.dart';
 import '../screens/buy_petrol_screen.dart';
 import '../screens/petrol_history_screen.dart';
@@ -21,7 +21,6 @@ class _CustomerMenuState extends State<CustomerMenu> {
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     _startFuelAvailabilityListener();
   }
@@ -92,6 +91,15 @@ class _CustomerMenuState extends State<CustomerMenu> {
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const StockChartScreen()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            icon: Icon(Icons.newspaper),
+            label: const Text("Global News & Community"),
+            onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const GlobalNewsScreen()),
             ),
           ),
           const SizedBox(height: 12),
