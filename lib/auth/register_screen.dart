@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/user_model.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -23,23 +24,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (value == null || value.isEmpty) {
       return 'Password is required';
     }
-
     if (value.length < 8) {
-      return 'Password must be at least 8 characters long';
+      return 'Password must at least 8 characters long';
     }
-
     if (!value.contains(RegExp(r'[A-Z]'))) {
-      return 'Include at least 1 uppercase letter';
+      return 'Must contain at least 1 uppercase letter';
     }
-
     if (!value.contains(RegExp(r'[a-z]'))) {
-      return 'Include at least 1 lowercase letter';
+      return 'Must contain at least 1 lower case';
     }
-
-    if (!value.contains(RegExp(r'[!@#$&*~%^().,]'))) {
-      return 'Include at least 1 special character';
+    if (!value.contains(RegExp(r'[\\!@#$&*~%^().,]'))) {
+      return 'Must return at least 1 special character';
     }
-
     return null;
   }
 
@@ -49,36 +45,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await _supabase.auth.signUp(
+      // 1. Sign up user in Supabase Auth
+      final AuthResponse response = await _supabase.auth.signUp(
         email: emailCtrl.text.trim(),
         password: passwordCtrl.text,
         data: {
           'full_name': fullnameCtrl.text.trim(),
           'role': 'User',
         },
-      );
+      );// 2. Explicitly insert into user_profiles table (Backup for trigger)
+      if (response.user != null) {
+        await _supabase.from('user_profiles').upsert({
+          'id': response.user!.id,
+          'email': emailCtrl.text.trim(),
+          'full_name': fullnameCtrl.text.trim(),
+          'role': 'User',
+        });
+      }
 
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Registration successful. Please log in.'),
-        ),
-      );
-
-      Navigator.pop(context);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Registration successful! Please login.')),
+        );
+        Navigator.pop(context);
+      }
     } on AuthException catch (e) {
-      if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.message),
-        ),
+        SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Profile Error: ${e.toString()}'), backgroundColor: Colors.red),
       );
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_application_assignment/auth/login_screen.dart';
+import 'package:mobile_application_assignment/screens/global_news_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../screens/petrol_chart_screen.dart';
 import '../screens/buy_petrol_screen.dart';
 import '../screens/petrol_history_screen.dart';
+import '../screens/stock_chart_screen.dart';
 
 class CustomerMenu extends StatefulWidget {
   final String name;
 
-  const CustomerMenu({super.key, required this.name});
+  const CustomerMenu({Key? key, required this.name}) : super(key: key);
 
   @override
   State<CustomerMenu> createState() => _CustomerMenuState();
@@ -17,11 +18,9 @@ class CustomerMenu extends StatefulWidget {
 
 class _CustomerMenuState extends State<CustomerMenu> {
   final _supabase = Supabase.instance.client;
-  RealtimeChannel? _subscription;
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     _startFuelAvailabilityListener();
   }
@@ -30,23 +29,23 @@ class _CustomerMenuState extends State<CustomerMenu> {
     // Stream real time changes on fuel_inventory table
 
     _supabase
-        .from('fuel_inventory')
+    .from('fuel_inventory')
         .stream(primaryKey: ['id'])
         .listen((data){
-      for (var item in data){
-        // Trigger alert if fuel is set to available with stock > 0
-        if (item['is_available'] == true && (item['stock_litres'] as num) > 0) {
-          if(mounted){
-            ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('🔔 ${item['fuel_type']} is now back in stock!'),
-                  backgroundColor: Colors.green,
-                  duration: const Duration(seconds: 4),
-                )
-            );
+          for (var item in data){
+            // Trigger alert if fuel is set to available with stock > 0
+            if (item['is_available'] == true && (item['stock_litres'] as num) > 0) {
+              if(mounted){
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('🔔 ${item['fuel_type']} is now back in stock!'),
+                    backgroundColor: Colors.green,
+                    duration: const Duration(seconds: 4),
+                  )
+                );
+              }
+            }
           }
-        }
-      }
     });
   }
 
@@ -145,6 +144,28 @@ class _CustomerMenuState extends State<CustomerMenu> {
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const PetrolHistoryScreen()),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.show_chart),
+                  label: const Text('Markets & Trading'),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const StockChartScreen()),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                ElevatedButton.icon(
+                  icon: Icon(Icons.newspaper),
+                  label: const Text("Global News & Community"),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const GlobalNewsScreen()),
                   ),
                 ),
 
