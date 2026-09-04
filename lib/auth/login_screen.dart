@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../main.dart';
 import '../menus/customer_menu.dart';
 import '../menus/staff_menu.dart';
 import 'register_screen.dart';
@@ -108,11 +107,21 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showErrorDialog(String message) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        icon: const Icon(Icons.error_outline),
-        title: const Text('Unable to sign in'),
+        title: Row(
+          children: [
+            Icon(Icons.error_outline, color: colorScheme.primary, size: 30),
+
+            SizedBox(width: 10),
+
+            const Text('Unable to sign in', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
         content: Text(message),
         actions: [
           TextButton(
