@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_application_assignment/auth/login_screen.dart';
+import 'package:mobile_application_assignment/screens/global_news_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../screens/petrol_chart_screen.dart';
 import '../screens/buy_petrol_screen.dart';
 import '../screens/petrol_history_screen.dart';
+import '../screens/stock_chart_screen.dart';
 
 class CustomerMenu extends StatefulWidget {
   final String name;
@@ -17,11 +18,9 @@ class CustomerMenu extends StatefulWidget {
 
 class _CustomerMenuState extends State<CustomerMenu> {
   final _supabase = Supabase.instance.client;
-  RealtimeChannel? _subscription;
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     _startFuelAvailabilityListener();
   }
@@ -83,6 +82,24 @@ class _CustomerMenuState extends State<CustomerMenu> {
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const PetrolHistoryScreen()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.show_chart),
+            label: const Text('Markets & Trading'),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const StockChartScreen()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            icon: Icon(Icons.newspaper),
+            label: const Text("Global News & Community"),
+            onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const GlobalNewsScreen()),
             ),
           ),
           const SizedBox(height: 12),
