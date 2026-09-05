@@ -16,7 +16,6 @@ class _AdminRefundScreenState extends State<AdminRefundScreen>
   late Future<List<Map<String, dynamic>>> _pendingFuture;
   late Future<List<Map<String, dynamic>>> _historyFuture;
 
-  // Formats a UTC DateTime as UTC+08:00, matching the portfolio screen.
   static String _formatUtc8(DateTime utcTime) {
     final local = utcTime.toUtc().add(const Duration(hours: 8));
     const months = [
@@ -44,8 +43,6 @@ class _AdminRefundScreenState extends State<AdminRefundScreen>
     super.dispose();
   }
 
-  // Joins refund_requests with the requesting user's email for display.
-  // Requires the "Admins can view all refund requests" RLS policy.
   Future<List<Map<String, dynamic>>> _fetchRequests({String? status}) async {
     var query = _supabase.from('refund_requests').select(
         'id, user_id, amount, status, reason, created_at, reviewed_at');
@@ -98,7 +95,7 @@ class _AdminRefundScreenState extends State<AdminRefundScreen>
           );
         },
       );
-      if (reason == null) return; // cancelled
+      if (reason == null) return;
     } else {
       final confirmed = await showDialog<bool>(
         context: context,

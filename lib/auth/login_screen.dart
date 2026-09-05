@@ -16,10 +16,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final _supabase = Supabase.instance.client;
 
   String _selectedRole = "User";
-  bool _isLoading = false; // Added to handle loading state
+  bool _isLoading = false;
   bool _obscurePassword = true;
 
-  // Changed to email controller because Supabase requires emails
   final TextEditingController _emailCtrl = TextEditingController();
   final TextEditingController _passwordCtrl = TextEditingController();
 
@@ -40,7 +39,6 @@ class _LoginScreenState extends State<LoginScreen> {
       final password = _passwordCtrl.text;
 
       try {
-        // 1. Authenticate with Supabase
         final response = await _supabase.auth.signInWithPassword(
           email: email,
           password: password,
@@ -48,7 +46,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
         final user = response.user;
         if (user != null) {
-          // 2. Fetch the role and full name from the user_profiles table
           final profileData = await _supabase
               .from('user_profiles')
               .select('role, full_name')
@@ -65,15 +62,13 @@ class _LoginScreenState extends State<LoginScreen> {
           final String userRole = profileData['role'] ?? 'User';
           final String fullName = profileData['full_name'] ?? 'Unknown';
 
-          // 3. Verify they selected the correct role (case-insensitive)
           if (userRole.toLowerCase() != _selectedRole.toLowerCase()) {
-            await _supabase.auth.signOut(); // Log out immediately if wrong role
+            await _supabase.auth.signOut();
             _showErrorDialog('Incorrect role selected for this account.');
             setState(() => _isLoading = false);
             return;
           }
 
-          // 4. Navigate to correct menu
           if (!mounted) return;
           if (userRole.toLowerCase() == 'staff') {
             Navigator.pushReplacement(
@@ -92,7 +87,6 @@ class _LoginScreenState extends State<LoginScreen> {
           }
         }
       } on AuthException catch (e) {
-        // Show Supabase specific errors (e.g., Invalid login credentials)
         _showErrorDialog(e.message);
       } catch (e) {
         _showErrorDialog('An unexpected error occurred: $e');
@@ -189,7 +183,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   const SizedBox(height: 32),
 
-                  // Role selector
                   SegmentedButton<String>(
                     segments: const [
                       ButtonSegment(
@@ -214,7 +207,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   const SizedBox(height: 28),
 
-                  // Email
                   TextFormField(
                     controller: _emailCtrl,
                     keyboardType: TextInputType.emailAddress,
@@ -239,7 +231,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Password
                   TextFormField(
                     controller: _passwordCtrl,
                     obscureText: _obscurePassword,
@@ -285,7 +276,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   const SizedBox(height: 24),
 
-                  // Login button
                   SizedBox(
                     height: 52,
                     child: FilledButton(
@@ -303,7 +293,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
 
-                  // Registration
                   if (_selectedRole == 'User') ...[
                     const SizedBox(height: 16),
 

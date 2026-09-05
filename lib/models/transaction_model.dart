@@ -7,11 +7,10 @@ class TransactionEntry {
   final IconData icon;
   final Color iconColor;
   final DateTime createdAt;
-  final String createdAtLabel; // pre-formatted, UTC+08:00
+  final String createdAtLabel;
 
-  // Only populated for top-up entries - used to drive refund eligibility.
   final String? topupId;
-  final String? refundStatus; // 'none' | 'pending' | 'refunded'
+  final String? refundStatus;
   final bool isTopup;
 
   TransactionEntry({
@@ -27,7 +26,6 @@ class TransactionEntry {
     this.isTopup = false,
   });
 
-  // Formats a UTC DateTime as UTC+08:00, e.g. "31 Aug 2026, 3:45 PM".
   static String _formatUtc8(DateTime utcTime) {
     final local = utcTime.toUtc().add(const Duration(hours: 8));
     const months = [
@@ -41,8 +39,6 @@ class TransactionEntry {
         '$hour12:$minute $period (UTC+8)';
   }
 
-  // Returns null (instead of throwing) if the row is missing required
-  // fields, so one malformed row doesn't crash the whole list.
   static TransactionEntry? tryTrade(Map<String, dynamic> row) {
     final createdAtRaw = row['created_at'] as String?;
     final createdAt =

@@ -14,17 +14,15 @@ class PetrolChartScreen extends StatefulWidget {
 class _PetrolChartScreenState extends State<PetrolChartScreen> {
   late Future<List<FuelPrice>> _priceFuture;
 
-  // Interactive Filter States
   final Set<String> _selectedFuels = {'RON95', 'RON97', 'Diesel'};
-  String _selectedTimeframe = 'ALL'; // Options: '1M', '3M', '6M', 'ALL'
+  String _selectedTimeframe = 'ALL';
 
   @override
   void initState() {
     super.initState();
-    _priceFuture = GovDataService.fetchFuelPrices(limit: 52); // Fetch up to 1 year of data
+    _priceFuture = GovDataService.fetchFuelPrices(limit: 52);
   }
 
-  // Filter dataset by timeframe
   List<FuelPrice> _filterByTimeframe(List<FuelPrice> sortedPrices) {
     if (_selectedTimeframe == 'ALL' || sortedPrices.isEmpty) return sortedPrices;
 
@@ -56,7 +54,6 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
           titleSpacing: 16,
           title: Row(
             children: [
-              // Back button
               Container(
                 width: 56,
                 height: 56,
@@ -73,7 +70,6 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
 
               const SizedBox(width: 20),
 
-              // Heading
               Expanded(
                 child: Text(
                   'Petrol Analytics',
@@ -120,9 +116,7 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
     );
   }
 
-  // ==================== INTERACTIVE GRAPH TAB ====================
   Widget _buildInteractiveGraphTab(List<FuelPrice> prices, FuelPrice latest, FuelPrice? previous) {
-    // Calculate dynamic Y-axis min and max based on active filters with fixed 0.1 step size
     double rawMin = double.infinity;
     double rawMax = double.negativeInfinity;
 
@@ -153,7 +147,6 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
       if (minY < 0) minY = 0.0;
       maxY = ((rawMax + 0.02) / yInterval).ceilToDouble() * yInterval;
 
-      // Round to 1 decimal place to eliminate floating point inaccuracies
       minY = (minY * 10).round() / 10.0;
       maxY = (maxY * 10).round() / 10.0;
 
@@ -168,7 +161,6 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Timeframe Filter (Segmented Button / Choice Chips)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -191,7 +183,6 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
           ),
           const SizedBox(height: 8),
 
-          // 2. Interactive Fuel Series Toggles (Multi-Select Filter Chips)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -208,7 +199,6 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
 
           const SizedBox(height: 20),
 
-          // 3. Interactive Line Chart
           SizedBox(
             height: 320,
             child: LineChart(
@@ -220,7 +210,6 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
                   drawVerticalLine: false,
                   horizontalInterval: yInterval,
                 ),
-                // Touch interaction & Tooltip configuration
                 lineTouchData: LineTouchData(
                   enabled: true,
                   touchTooltipData: LineTouchTooltipData(
@@ -299,7 +288,6 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
           ),
           const SizedBox(height: 24),
 
-          // 4. Latest Price Cards Summary
           const Text('Latest Price Summary', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           SizedBox(
@@ -318,7 +306,6 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
     );
   }
 
-  // ==================== HELPER BUILDERS ====================
 
   FilterChip _buildFuelFilterChip(String label, Color color) {
     final isSelected = _selectedFuels.contains(label);
@@ -332,7 +319,6 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
           if (selected) {
             _selectedFuels.add(label);
           } else {
-            // Prevent deselecting all items
             if (_selectedFuels.length > 1) _selectedFuels.remove(label);
           }
         });

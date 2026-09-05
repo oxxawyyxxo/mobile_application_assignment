@@ -19,7 +19,7 @@ class FuelPrice{
     required this.ron95Skps
   });
 
-  factory FuelPrice.fromJson(Map<String, dynamic> json){ //special constructor to handle network data safety
+  factory FuelPrice.fromJson(Map<String, dynamic> json){
     return FuelPrice(
         seriesType: json['series_type'] ?? 'level',
         date: json['date'] ?? '',

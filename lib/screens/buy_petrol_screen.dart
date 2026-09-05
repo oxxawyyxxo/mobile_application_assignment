@@ -19,9 +19,8 @@ class _BuyPetrolScreenState extends State<BuyPetrolScreen> {
   bool _redeemPoints = false;
   bool _isLoading = false;
 
-  // Real-time calculation variables
   int _currentPoints = 0;
-  double _pricePerLitre = 2.05; // Default for RON95
+  double _pricePerLitre = 2.05;
   double _rawTotal = 0.0;
   double _discountAmount = 0.0;
   Map<String, double> _fuelPrices = {};
@@ -86,7 +85,6 @@ class _BuyPetrolScreenState extends State<BuyPetrolScreen> {
     }
   }
 
-  // Update the price per litre based on the selected dropdown
   Future<void> _updateFuelPrice(String fuelType) async {
     try {
       final fuelData = await _supabase
@@ -113,7 +111,6 @@ class _BuyPetrolScreenState extends State<BuyPetrolScreen> {
     }
   }
 
-  // Live calculation for the UI preview
   void _calculatePreview() {
     final litres = double.tryParse(_litresCtrl.text) ?? 0.0;
     _rawTotal = litres * _pricePerLitre;
@@ -122,14 +119,13 @@ class _BuyPetrolScreenState extends State<BuyPetrolScreen> {
       int pointsToRedeem = (_currentPoints / 100).floor() * 100;
       _discountAmount = pointsToRedeem / 100.0;
 
-      // Ensure discount doesn't exceed the total price
       if (_discountAmount > _rawTotal) {
         _discountAmount = _rawTotal;
       }
     } else {
       _discountAmount = 0.0;
     }
-    setState(() {}); // Trigger rebuild to show new numbers
+    setState(() {});
   }
 
   void _processPurchase() async {
@@ -144,7 +140,6 @@ class _BuyPetrolScreenState extends State<BuyPetrolScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Await the service
       String? error = await _petrolService.buyPetrol(
         fuelType: _selectedFuel,
         requestedLitres: litres,
@@ -291,7 +286,6 @@ class _BuyPetrolScreenState extends State<BuyPetrolScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // User Balance Card
               Card(
                 color: Colors.blue.shade50,
                 child: Padding(
@@ -308,8 +302,7 @@ class _BuyPetrolScreenState extends State<BuyPetrolScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-        
-              // Fuel Selection
+
               SegmentedButton<String>(
                 segments: const [
                   ButtonSegment(
@@ -342,8 +335,7 @@ class _BuyPetrolScreenState extends State<BuyPetrolScreen> {
                 },
               ),
               const SizedBox(height: 16),
-        
-              // Litre Input
+
               TextField(
                 controller: _litresCtrl,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -355,8 +347,7 @@ class _BuyPetrolScreenState extends State<BuyPetrolScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-        
-              // Point Redemption Toggle
+
               CheckboxListTile(
                 title: const Text('Redeem All Points'),
                 value: _redeemPoints,
@@ -367,9 +358,9 @@ class _BuyPetrolScreenState extends State<BuyPetrolScreen> {
                 }
                     : null,
               ),
-        
+
               const Divider(height: 32, thickness: 2),
-        
+
               const Text('Order Summary', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -388,9 +379,9 @@ class _BuyPetrolScreenState extends State<BuyPetrolScreen> {
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
                 ),
               ]),
-        
+
               const SizedBox(height: 24),
-        
+
               _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : ElevatedButton(

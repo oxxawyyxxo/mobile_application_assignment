@@ -49,14 +49,12 @@ class _CustomerMenuState extends State<CustomerMenu> {
   }
 
   void _startFuelAvailabilityListener(){
-    // Stream real time changes on fuel_inventory table
 
     _supabase
     .from('fuel_inventory')
         .stream(primaryKey: ['id'])
         .listen((data){
           for (var item in data){
-            // Trigger alert if fuel is set to available with stock > 0
             if (item['is_available'] == true && (item['stock_litres'] as num) > 0) {
               if(mounted){
                 ScaffoldMessenger.of(context).showSnackBar(

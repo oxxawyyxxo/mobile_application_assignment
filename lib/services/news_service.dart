@@ -35,7 +35,6 @@ class NewsService {
     try {
       String? imageUrl;
 
-      // 1. Handle Image Upload
       if (imageFile != null) {
         final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
         final bytes = await imageFile.readAsBytes();
@@ -48,7 +47,6 @@ class NewsService {
         imageUrl = _supabase.storage.from('news_images').getPublicUrl(fileName);
       }
 
-      // 2. Handle Database Insert
       await _supabase.from('news_posts').insert({
         'author_id': currentUserId,
         'content': content,
@@ -62,7 +60,6 @@ class NewsService {
     } catch (e) {
       print('=== SUBMIT POST ERROR ===');
       print(e.toString());
-      // Throw the error so the UI can catch it and show a SnackBar
       throw Exception('Failed to post: $e');
     }
   }

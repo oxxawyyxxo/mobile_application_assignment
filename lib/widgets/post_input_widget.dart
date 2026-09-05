@@ -51,7 +51,6 @@ class _PostInputWidgetState extends State<PostInputWidget> {
       }
     } catch (e) {
       if (mounted) {
-        // This will tell you exactly WHY the image is failing (e.g., missing bucket, RLS, etc.)
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
@@ -75,7 +74,6 @@ class _PostInputWidgetState extends State<PostInputWidget> {
               decoration: const InputDecoration(hintText: 'What is happening?'),
             ),
 
-            // FIX 1: Convert XFile back to File to display it in the UI
             if (_selectedImage != null) Image.file(File(_selectedImage!.path), height: 100),
 
             Row(
@@ -85,7 +83,6 @@ class _PostInputWidgetState extends State<PostInputWidget> {
                   onPressed: () async {
                     final file = await widget.newsService.pickAndCompressImage();
 
-                    // FIX 2: Convert the returned File into an XFile
                     if (file != null) {
                       setState(() => _selectedImage = XFile(file.path));
                     }

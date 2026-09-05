@@ -28,7 +28,6 @@ extension TimeframeLabel on Timeframe {
     }
   }
 
-  /// Yahoo Finance `range` param.
   String get range {
     switch (this) {
       case Timeframe.fiveDay:
@@ -48,7 +47,6 @@ extension TimeframeLabel on Timeframe {
     }
   }
 
-  /// Yahoo Finance `interval` param.
   String get interval {
     switch (this) {
       case Timeframe.fiveDay:
@@ -68,7 +66,6 @@ extension TimeframeLabel on Timeframe {
   }
 }
 
-/// Static list of top stocks shown in the search sheet.
 const List<Map<String, String>> kTopStocks = [
   {'symbol': 'AAPL', 'name': 'Apple Inc.'},
   {'symbol': 'MSFT', 'name': 'Microsoft Corp.'},
@@ -109,7 +106,6 @@ class _StockChartScreenState extends State<StockChartScreen> {
   Timeframe _selectedTimeframe = Timeframe.oneMonth;
   late Future<List<StockPrice>> _pricesFuture;
 
-  // Cached latest close price, used by the Trade FAB (outside the FutureBuilder).
   double? _latestPrice;
 
   @override
@@ -137,7 +133,7 @@ class _StockChartScreenState extends State<StockChartScreen> {
   void _onSymbolSelected(String symbol) {
     setState(() {
       _symbol = symbol;
-      _latestPrice = null; // reset until new data arrives
+      _latestPrice = null;
       _loadData();
     });
   }
@@ -218,10 +214,6 @@ class _StockChartScreenState extends State<StockChartScreen> {
             ),
           ],
         ),
-        // actions: const [
-        //   BackToCustomerMenuButton(),
-        //   SizedBox(width: 8),
-        // ],
       ),
       bottomNavigationBar: AppBottomNav(
         currentIndex: 0,
@@ -269,8 +261,6 @@ class _StockChartScreenState extends State<StockChartScreen> {
                 startPrice == 0 ? 0.0 : (change / startPrice) * 100;
                 final isUp = change >= 0;
 
-                // Cache the latest price for the Trade FAB without triggering
-                // a rebuild loop (safe since it's a plain field write).
                 if (_latestPrice != currentPrice) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (mounted) {

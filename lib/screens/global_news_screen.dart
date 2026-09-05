@@ -134,7 +134,7 @@ class _GlobalNewsScreenState extends State<GlobalNewsScreen> {
                 children: [
                   const SizedBox(height: 4),
                   Text(
-                    news.description.replaceAll(RegExp(r'<[^>]*>'), ''), // Strip HTML tags
+                    news.description.replaceAll(RegExp(r'<[^>]*>'), ''),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -143,7 +143,6 @@ class _GlobalNewsScreenState extends State<GlobalNewsScreen> {
                 ],
               ),
               onTap: () {
-                // Implement URL launching here if you want users to read the full article
               },
             );
           },

@@ -8,9 +8,6 @@ import 'stock_chart_screen.dart';
 
 enum TradeSide { buy, sell }
 
-/// Two entry modes:
-/// - byShares: user enters a whole/fractional share quantity directly
-/// - byAmount: user enters an RM amount and we compute fractional shares
 enum EntryMode { byShares, byAmount }
 
 class BuySellScreen extends StatefulWidget {
@@ -122,7 +119,6 @@ class _BuySellScreenState extends State<BuySellScreen> {
     }
   }
 
-  // Derived preview numbers based on current input + mode
   double get _quantity {
     final val = double.tryParse(_inputCtrl.text) ?? 0.0;
     if (_mode == EntryMode.byShares) return val;
@@ -136,9 +132,6 @@ class _BuySellScreenState extends State<BuySellScreen> {
     return val * _currentPrice;
   }
 
-  // Switches to "by shares" mode and fills the exact held quantity, so the
-  // sell RPC receives p_quantity directly rather than a derived RM amount -
-  // avoids rounding mismatches that could leave a dust balance behind.
   void _fillSellAll() {
     setState(() {
       _mode = EntryMode.byShares;
@@ -244,7 +237,6 @@ class _BuySellScreenState extends State<BuySellScreen> {
       return;
     }
 
-    // Pre-validations for sell and buy
     if (_side == TradeSide.sell) {
       if (_heldQuantity <= 0) {
         _showErrorDialog(
@@ -286,8 +278,6 @@ class _BuySellScreenState extends State<BuySellScreen> {
         params['p_quantity'] = rawInput;
       } else {
         params['p_amount'] = rawInput;
-        // Compute p_quantity with 6 decimal places precision so that
-        // sell_stock does not truncate/round quantity to 4 decimal places.
         params['p_quantity'] =
             double.parse((rawInput / _currentPrice).toStringAsFixed(6));
       }
@@ -382,7 +372,6 @@ class _BuySellScreenState extends State<BuySellScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Account snapshot
             Card(
               color: Colors.blue.shade50,
               child: Padding(
@@ -390,18 +379,6 @@ class _BuySellScreenState extends State<BuySellScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    // Column(
-                    //   children: [
-                    //     const Text('Credit Balance'),
-                    //     Text(
-                    //       _creditBalance == null
-                    //           ? '...'
-                    //           : 'RM ${_creditBalance!.toStringAsFixed(2)}',
-                    //       style: const TextStyle(
-                    //           fontSize: 18, fontWeight: FontWeight.bold),
-                    //     ),
-                    //   ],
-                    // ),
                     Column(
                       children: [
                         Text('$_symbol Held'),
@@ -430,7 +407,6 @@ class _BuySellScreenState extends State<BuySellScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Buy / Sell toggle
             SegmentedButton<TradeSide>(
               segments: const [
                 ButtonSegment(
@@ -449,7 +425,6 @@ class _BuySellScreenState extends State<BuySellScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Entry mode toggle
             SegmentedButton<EntryMode>(
               segments: const [
                 ButtonSegment(
@@ -492,7 +467,6 @@ class _BuySellScreenState extends State<BuySellScreen> {
               ),
             ),
 
-            // Sell All quick action - only relevant when selling and holding something
             if (_side == TradeSide.sell && _heldQuantity > 0) ...[
               const SizedBox(height: 8),
               Align(
@@ -509,7 +483,6 @@ class _BuySellScreenState extends State<BuySellScreen> {
 
             const SizedBox(height: 16),
 
-            // Live preview
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),

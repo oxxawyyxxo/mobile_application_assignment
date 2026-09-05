@@ -45,7 +45,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 1. Sign up user in Supabase Auth
       final AuthResponse response = await _supabase.auth.signUp(
         email: emailCtrl.text.trim(),
         password: passwordCtrl.text,
@@ -53,7 +52,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'full_name': fullnameCtrl.text.trim(),
           'role': 'User',
         },
-      ); // 2. Explicitly insert into user_profiles table (Backup for trigger)
+      );
       if (response.user != null) {
         await _supabase.from('user_profiles').upsert({
           'id': response.user!.id,
@@ -105,7 +104,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         titleSpacing: 16,
         title: Row(
           children: [
-            // Back button
             Container(
               width: 56,
               height: 56,
@@ -122,7 +120,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
             const SizedBox(width: 20),
 
-            // Heading
             Text(
               'Create account',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -154,7 +151,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 40),
 
-                    // Full name
                     TextFormField(
                       controller: fullnameCtrl,
                       textInputAction: TextInputAction.next,
@@ -186,7 +182,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 16),
 
-                    // Email
                     TextFormField(
                       controller: emailCtrl,
                       keyboardType: TextInputType.emailAddress,
@@ -214,7 +209,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 16),
 
-                    // Password
                     TextFormField(
                       controller: passwordCtrl,
                       obscureText: _obscurePassword,
@@ -249,7 +243,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 12),
 
-                    // Password hint
                     Text(
                       'At least 8 characters with uppercase, lowercase, '
                           'and a special character.',
@@ -264,7 +257,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 32),
 
-                    // Register button
                     SizedBox(
                       height: 52,
                       child: FilledButton(
@@ -283,7 +275,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 16),
 
-                    // Login option
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [

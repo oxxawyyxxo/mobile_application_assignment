@@ -29,7 +29,6 @@ class _StaffMenuState extends State<StaffMenu> {
     }
   }
 
-  // --- GLOBAL SYSTEM RESET ---
   Future<void> _resetAllSystemData() async {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -86,7 +85,6 @@ class _StaffMenuState extends State<StaffMenu> {
         'transactions'
       ];
 
-      // 3. Loop and delete
       for (String table in tablesToClear) {
         try {
           await _supabase.from(table).delete().neq('id', '00000000-0000-0000-0000-000000000000');

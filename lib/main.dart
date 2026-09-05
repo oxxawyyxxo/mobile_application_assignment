@@ -58,7 +58,6 @@ class _MyHomePageState extends State<MyHomePage> {
 class AuthSeeder {
   static final _supabase = Supabase.instance.client;
 
-  // Your mock list
   static final List<AppUser> mockUserDatabase = [
     AppUser(username: 'admin@gmail.com', fullName: 'Booi Ah Heng', password: 'Admin12345@', role: 'Staff'),
     AppUser(username: 'user@gmail.com', fullName: 'Ger Ah Heng', password: 'User12345@', role: 'User')
@@ -67,7 +66,6 @@ class AuthSeeder {
   static Future<void> initializeMockUsers() async {
     for (var user in mockUserDatabase) {
       try {
-        // 1. Create the user in Supabase Auth
         final AuthResponse res = await _supabase.auth.signUp(
           email: user.username,
           password: user.password,
@@ -75,13 +73,12 @@ class AuthSeeder {
 
         final String? userId = res.user?.id;
 
-        // 2. Insert their profile and role into user_profiles
         if (userId != null) {
           await _supabase.from('user_profiles').upsert({
             'id': userId,
             'full_name': user.fullName,
             'role': user.role,
-            'points': user.role == 'User' ? 500 : 0, // Give the user some test points
+            'points': user.role == 'User' ? 500 : 0,
           });
           print('Successfully created: ${user.username}');
         }

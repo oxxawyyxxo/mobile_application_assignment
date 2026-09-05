@@ -11,7 +11,6 @@ class GovDataService {
     final Uri url = Uri.parse('$_baseUrl?id=$_datasetId&limit=$limit');
 
     try {
-      // Remove the headers completely. The API is open to the public.
       final response = await http.get(url);
 
       if (response.statusCode == 200) {

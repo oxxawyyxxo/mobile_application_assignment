@@ -17,9 +17,6 @@ class _TopUpScreenState extends State<TopUpScreen> {
   bool _isLoading = false;
   double? _currentBalance;
 
-  // Locked-in amount once the user taps "Done" - controls whether the QR
-  // + confirm section is shown. Cleared after a successful top up or if
-  // the user edits the amount again.
   double? _lockedAmount;
 
   final List<double> _quickAmounts = [10, 20, 50, 100, 200];
@@ -29,8 +26,6 @@ class _TopUpScreenState extends State<TopUpScreen> {
     super.initState();
     _fetchBalance();
     _amountCtrl.addListener(() {
-      // If the user edits the amount after locking it in, go back to
-      // the entry step rather than confirming payment for a stale value.
       if (_lockedAmount != null) {
         setState(() => _lockedAmount = null);
       }
@@ -167,7 +162,6 @@ class _TopUpScreenState extends State<TopUpScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Current balance card
             Card(
               color: Colors.blue.shade50,
               child: Padding(
@@ -209,7 +203,6 @@ class _TopUpScreenState extends State<TopUpScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Quick amount chips - hidden once amount is locked in
             if (!showQrStep) ...[
               Wrap(
                 spacing: 8,
@@ -232,7 +225,6 @@ class _TopUpScreenState extends State<TopUpScreen> {
               ),
             ],
 
-            // QR + confirm step - only appears after amount is locked in
             if (showQrStep) ...[
               const Divider(height: 32, thickness: 2),
               Text(

@@ -86,8 +86,6 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
     final user = _supabase.auth.currentUser;
     if (user == null) return [];
 
-    // Fetch both trade history and top-up history, then merge + sort
-    // client-side since they're separate tables.
     final trades = await _supabase
         .from('stock_trades')
         .select('symbol, side, quantity, price, amount, created_at')
@@ -102,8 +100,6 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
         .order('created_at', ascending: false)
         .limit(30);
 
-    // refund_status isn't a column on topup_transactions - derive it by
-    // looking up any refund_requests row tied to each top-up.
     final refundRows = await _supabase
         .from('refund_requests')
         .select('topup_transaction_id, status')
@@ -128,11 +124,6 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   }
 
   Future<void> _showRefundNotice() async {
-    // Fast local check: if we already know (from the last transactions
-    // fetch) that a refund is pending, deny immediately without even
-    // calling the server. This is just a UX shortcut - request_refund()
-    // in the DB still enforces this for real, so it's safe if this cache
-    // is stale.
     final transactions = await _transactionsFuture;
     final hasPendingRefund = transactions.any(
           (t) => t.isTopup && t.refundStatus == 'pending',
@@ -145,8 +136,6 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
       return;
     }
 
-    // Check eligibility first - if it fails, deny immediately without
-    // showing the "Continue" option at all.
     Map<String, dynamic> eligibility;
     try {
       eligibility = await _supabase.rpc('check_refund_eligibility');
@@ -220,7 +209,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   bool _isSubmittingRefund = false;
 
   Future<void> _submitRefundRequest() async {
-    if (_isSubmittingRefund) return; // guard against double-tap races
+    if (_isSubmittingRefund) return;
     setState(() => _isSubmittingRefund = true);
 
     try {
@@ -240,8 +229,6 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
       _refresh();
     } catch (e) {
       if (!mounted) return;
-      // The RPC's raised exception message surfaces here, e.g. "Refund
-      // window has expired" or "You already have a pending refund request".
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
@@ -260,8 +247,6 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
     }
   }
 
-  // Supabase RPC errors come wrapped (e.g. PostgrestException); strip down
-  // to just the raised message for a cleaner dialog.
   String _extractErrorMessage(Object e) {
     final text = e.toString();
     final match = RegExp(r'message:\s*(.+?)(,\s*code:|$)').firstMatch(text);
@@ -526,4 +511,3 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
     );
   }
 }
-

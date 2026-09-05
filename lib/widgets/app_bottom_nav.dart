@@ -4,10 +4,6 @@ import '../screens/stock_chart_screen.dart';
 import '../screens/topup_screen.dart';
 import '../screens/portfolio_screen.dart';
 
-/// Shared bottom navigation bar for the 4 main sections of the app.
-///
-/// [currentIndex] should be:
-///   0 = chart screen, 1 = Top Up, 2 = Buy/Sell screen, 3 = Portfolio
 class AppBottomNav extends StatelessWidget {
   final int currentIndex;
   final VoidCallback? onTrade;
@@ -44,8 +40,6 @@ class AppBottomNav extends StatelessWidget {
         return;
     }
 
-    // Replace the stack rather than pushing endlessly on top, so repeated
-    // nav taps don't build up a deep back stack.
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => target),

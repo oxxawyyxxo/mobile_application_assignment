@@ -11,7 +11,6 @@ class AdminNewsScreen extends StatefulWidget {
 class _AdminNewsScreenState extends State<AdminNewsScreen> {
   final _supabase = Supabase.instance.client;
 
-  // --- ACTIONS ---
 
   Future<void> _removePost(String postId) async {
     await _supabase.from('news_posts').update({'status': 'admin_removed'}).eq('id', postId);
@@ -37,7 +36,6 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report dismissed')));
   }
 
-  // Resets all transactions, posts, and trades for a specific user except profile
   Future<void> _resetUserData(String userId) async {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -64,11 +62,8 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
     if (confirm != true) return;
 
     try {
-      // 1. Delete all user posts
       await _supabase.from('news_posts').delete().eq('author_id', userId);
-      // 2. Delete all user reports
       await _supabase.from('news_reports').delete().eq('reporter_id', userId);
-      // 3. Delete user trades / portfolio transactions (adjust table names if different)
       await _supabase.from('trades').delete().eq('user_id', userId);
       await _supabase.from('transactions').delete().eq('user_id', userId);
 

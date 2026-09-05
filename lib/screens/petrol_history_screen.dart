@@ -161,7 +161,6 @@ class _PetrolHistoryScreenState extends State<PetrolHistoryScreen> {
         titleSpacing: 16,
         title: Row(
           children: [
-            // Back button
             Container(
               width: 56,
               height: 56,
@@ -178,7 +177,6 @@ class _PetrolHistoryScreenState extends State<PetrolHistoryScreen> {
 
             const SizedBox(width: 20),
 
-            // Heading
             Expanded(
               child: Text(
                 'Purchase History',
