@@ -80,8 +80,6 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
     }
   }
 
-  // --- BUILD UI ---
-
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
