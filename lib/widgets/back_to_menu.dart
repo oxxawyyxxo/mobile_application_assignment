@@ -11,7 +11,7 @@ class BackToCustomerMenuButton extends StatelessWidget {
       tooltip: 'Back to Customer Menu',
       onPressed: () {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const CustomerMenu(name: '',)),
+          MaterialPageRoute(builder: (_) => const CustomerMenu()),
               (route) => false,
         );
       },
