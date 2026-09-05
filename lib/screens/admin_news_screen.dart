@@ -39,6 +39,9 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
 
   // Resets all transactions, posts, and trades for a specific user except profile
   Future<void> _resetUserData(String userId) async {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -47,9 +50,12 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colorScheme.error,
+              foregroundColor: colorScheme.onError,
+            ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Reset Everything', style: TextStyle(color: Colors.white)),
+            child: const Text('Reset Everything'),
           ),
         ],
       ),
@@ -74,7 +80,7 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error resetting user data: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Error resetting user data: $e'), backgroundColor: colorScheme.error),
         );
       }
     }
@@ -84,16 +90,48 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return DefaultTabController(
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Admin Dashboard'),
-          bottom: const TabBar(
-            tabs: [
+          toolbarHeight: 72,
+          automaticallyImplyLeading: false,
+          titleSpacing: 16,
+          title: Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.arrow_back),
+                  tooltip: 'Back',
+                ),
+              ),
+              const SizedBox(width: 20),
+              Text(
+                'Admin Dashboard',
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          bottom: TabBar(
+            indicatorColor: colorScheme.primary,
+            labelColor: colorScheme.primary,
+            unselectedLabelColor: colorScheme.onSurfaceVariant,
+            tabs: const [
               Tab(icon: Icon(Icons.list), text: 'Posts'),
               Tab(icon: Icon(Icons.flag), text: 'Reports'),
-              Tab(icon: Icon(Icons.block), text: 'Banned Users'),
+              Tab(icon: Icon(Icons.block), text: 'Banned'),
             ],
           ),
         ),
@@ -109,10 +147,12 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
   }
 
   Widget _buildPostsTab() {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _supabase.from('news_posts').stream(primaryKey: ['id']).order('created_at', ascending: false),
       builder: (context, snapshot) {
-        if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
+        if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}', style: TextStyle(color: colorScheme.error)));
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
         final posts = snapshot.data!;
         if (posts.isEmpty) return const Center(child: Text('No posts yet.'));
@@ -125,30 +165,30 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
 
             return Card(
               margin: const EdgeInsets.all(8.0),
-              color: isRemoved ? Colors.grey.shade200 : Colors.white,
+              color: isRemoved ? colorScheme.surfaceContainerHigh : colorScheme.surface,
               child: ListTile(
                 title: Text(post['content']),
                 subtitle: Text(
                   isRemoved ? 'Status: Removed by Admin' : 'Author ID: ${post['author_id']}',
-                  style: TextStyle(color: isRemoved ? Colors.red : Colors.grey),
+                  style: TextStyle(color: isRemoved ? colorScheme.error : colorScheme.onSurfaceVariant),
                 ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (!isRemoved) ...[
                       IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
+                        icon: Icon(Icons.delete, color: colorScheme.error),
                         tooltip: 'Remove Post',
                         onPressed: () => _removePost(post['id']),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.block, color: Colors.orange),
+                        icon: Icon(Icons.block, color: colorScheme.tertiary),
                         tooltip: 'Ban Author',
                         onPressed: () => _banUser(post['author_id']),
                       ),
                     ],
                     IconButton(
-                      icon: const Icon(Icons.restore_from_trash, color: Colors.purple),
+                      icon: Icon(Icons.restore_from_trash, color: colorScheme.primary),
                       tooltip: 'Reset All Data for User',
                       onPressed: () => _resetUserData(post['author_id']),
                     ),
@@ -163,10 +203,12 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
   }
 
   Widget _buildReportsTab() {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _supabase.from('news_reports').stream(primaryKey: ['id']).order('created_at', ascending: false),
       builder: (context, snapshot) {
-        if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
+        if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}', style: TextStyle(color: colorScheme.error)));
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
         final reports = snapshot.data!;
         if (reports.isEmpty) return const Center(child: Text('No reports yet.'));
@@ -178,7 +220,7 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
             return Card(
               margin: const EdgeInsets.all(8.0),
               child: ListTile(
-                leading: const Icon(Icons.warning, color: Colors.orange),
+                leading: Icon(Icons.warning, color: colorScheme.tertiary),
                 title: Text('Reported Post ID: ${report['post_id']}'),
                 subtitle: Text('Reason: ${report['reason']}\nReported by: ${report['reporter_id']}'),
                 trailing: Row(
@@ -186,10 +228,10 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
                   children: [
                     TextButton(
                       onPressed: () => _ignoreReport(report['id']),
-                      child: const Text('Ignore', style: TextStyle(color: Colors.grey)),
+                      child: Text('Ignore', style: TextStyle(color: colorScheme.onSurfaceVariant)),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
+                      icon: Icon(Icons.delete, color: colorScheme.error),
                       tooltip: 'Remove Offending Post',
                       onPressed: () => _removePost(report['post_id']),
                     ),
@@ -204,10 +246,12 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
   }
 
   Widget _buildBannedUsersTab() {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _supabase.from('banned_users').stream(primaryKey: ['id']),
       builder: (context, snapshot) {
-        if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
+        if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}', style: TextStyle(color: colorScheme.error)));
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
         final bannedList = snapshot.data!;
         if (bannedList.isEmpty) return const Center(child: Text('No banned users.'));
@@ -221,17 +265,18 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
             return Card(
               margin: const EdgeInsets.all(8.0),
               child: ListTile(
-                leading: const Icon(Icons.person_off, color: Colors.red),
+                leading: Icon(Icons.person_off, color: colorScheme.error),
                 title: Text('User ID: $userId'),
                 subtitle: Text('Banned on: ${entry['created_at'] ?? 'N/A'}'),
                 trailing: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                  icon: const Icon(Icons.check_circle, color: Colors.white, size: 18),
-                  label: const Text('Unban', style: TextStyle(color: Colors.white)),
-                  onPressed: (){
-                    setState(() {
-                      _unbanUser(userId);
-                    });
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: colorScheme.onPrimary,
+                  ),
+                  icon: const Icon(Icons.check_circle, size: 18),
+                  label: const Text('Unban'),
+                  onPressed: () {
+                    _unbanUser(userId);
                   },
                 ),
               ),
