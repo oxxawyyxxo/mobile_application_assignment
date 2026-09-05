@@ -24,6 +24,7 @@ class _BuyPetrolScreenState extends State<BuyPetrolScreen> {
   double _pricePerLitre = 2.05; // Default for RON95
   double _rawTotal = 0.0;
   double _discountAmount = 0.0;
+  Map<String, double> _fuelPrices = {};
 
   @override
   void initState() {
@@ -54,7 +55,35 @@ class _BuyPetrolScreenState extends State<BuyPetrolScreen> {
         });
       }
     }
-    _updateFuelPrice(_selectedFuel);
+    await _fetchFuelPrices();
+  }
+
+  Future<void> _fetchFuelPrices() async {
+    try {
+      final fuelData = await _supabase
+          .from('fuel_inventory')
+          .select('fuel_type, price');
+
+      if (mounted) {
+        final Map<String, double> prices = {};
+        for (var row in fuelData) {
+          final fuelType = row['fuel_type'] as String?;
+          final price = (row['price'] as num?)?.toDouble();
+          if (fuelType != null && price != null) {
+            prices[fuelType] = price;
+          }
+        }
+        setState(() {
+          _fuelPrices = prices;
+          if (_fuelPrices.containsKey(_selectedFuel)) {
+            _pricePerLitre = _fuelPrices[_selectedFuel]!;
+          }
+          _calculatePreview();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching fuel prices: $e');
+    }
   }
 
   // Update the price per litre based on the selected dropdown
@@ -73,7 +102,9 @@ class _BuyPetrolScreenState extends State<BuyPetrolScreen> {
 
       if (mounted) {
         setState(() {
-          _pricePerLitre = (fuelData['price'] as num).toDouble();
+          final price = (fuelData['price'] as num).toDouble();
+          _fuelPrices[fuelType] = price;
+          _pricePerLitre = price;
           _calculatePreview();
         });
       }
@@ -297,24 +328,19 @@ class _BuyPetrolScreenState extends State<BuyPetrolScreen> {
                 selected: {_selectedFuel},
                 showSelectedIcon: false,
                 onSelectionChanged: (selection) {
-                  setState(() {
-                    _selectedFuel = selection.first;
-                  });
+                  if (selection.isNotEmpty) {
+                    final newFuel = selection.first;
+                    setState(() {
+                      _selectedFuel = newFuel;
+                      if (_fuelPrices.containsKey(newFuel)) {
+                        _pricePerLitre = _fuelPrices[newFuel]!;
+                        _calculatePreview();
+                      }
+                    });
+                    _updateFuelPrice(newFuel);
+                  }
                 },
               ),
-              // DropdownButtonFormField<String>(
-              //   value: _selectedFuel,
-              //   items: ['RON 95', 'RON 97', 'Diesel']
-              //       .map((type) => DropdownMenuItem(value: type, child: Text(type)))
-              //       .toList(),
-              //   onChanged: (val) {
-              //     if (val != null) {
-              //       setState(() => _selectedFuel = val);
-              //       _updateFuelPrice(val);
-              //     }
-              //   },
-              //   decoration: const InputDecoration(labelText: 'Fuel Type', border: OutlineInputBorder()),
-              // ),
               const SizedBox(height: 16),
         
               // Litre Input
