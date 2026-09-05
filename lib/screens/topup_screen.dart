@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/app_bottom_nav.dart';
-import '../widgets/back_to_menu.dart';
+import '../menus/customer_menu.dart';
 
 class TopUpScreen extends StatefulWidget {
   const TopUpScreen({super.key});
@@ -117,14 +118,49 @@ class _TopUpScreenState extends State<TopUpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final bool showQrStep = _lockedAmount != null;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Top Up Credit'),
-        actions: const [
-          BackToCustomerMenuButton(),
-          SizedBox(width: 8),
-        ],),
+      appBar: AppBar(
+        toolbarHeight: 72,
+        automaticallyImplyLeading: false,
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: IconButton(
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CustomerMenu()),
+                    (route) => false,
+                  );
+                },
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Back',
+              ),
+            ),
+
+            const SizedBox(width: 20),
+
+            Expanded(
+              child: Text(
+                'Top Up Credit',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ),
+          ],
+        ),
+      ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 1),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -164,6 +200,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
               controller: _amountCtrl,
               enabled: !showQrStep,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d{0,9}(\.\d{0,2})?'))],
               decoration: const InputDecoration(
                 prefixText: 'RM ',
                 border: OutlineInputBorder(),
