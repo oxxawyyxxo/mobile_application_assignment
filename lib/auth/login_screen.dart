@@ -139,6 +139,35 @@ class _LoginScreenState extends State<LoginScreen> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
+      appBar: AppBar(
+        toolbarHeight: 72,
+        automaticallyImplyLeading: false,
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                Icons.lock_outline_rounded,
+                size: 28,
+                color: colorScheme.onPrimaryContainer,
+              ),
+            ),
+            const SizedBox(width: 20),
+            Text(
+              'Welcome back',
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -151,37 +180,6 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo / icon
-                  Row(
-                    children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Icon(
-                          Icons.lock_outline_rounded,
-                          size: 28,
-                          color: colorScheme.onPrimaryContainer,
-                        ),
-                      ),
-
-                      SizedBox(width: 20),
-
-                      Text(
-                        'Welcome back',
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-
-
-                  const SizedBox(height: 20),
-
                   Text(
                     'Sign in to continue to your account.',
                     style: theme.textTheme.bodyLarge?.copyWith(
