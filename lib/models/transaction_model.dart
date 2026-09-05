@@ -59,7 +59,7 @@ class TransactionEntry {
     return TransactionEntry(
       title: '${isBuy ? "Bought" : "Sold"} $symbol',
       subtitle:
-      '${quantity.toStringAsFixed(4)} shares @ RM ${price.toStringAsFixed(2)}\n'
+      '${quantity.toStringAsFixed(6)} shares @ RM ${price.toStringAsFixed(2)}\n'
           '${_formatUtc8(createdAt)}',
       amountLabel: '${isBuy ? "-" : "+"}RM ${amount.toStringAsFixed(2)}',
       icon: isBuy ? Icons.trending_up : Icons.trending_down,
