@@ -4,7 +4,7 @@ import '../models/stock_price_model.dart';
 import '../services/stock_data_service.dart';
 import 'buy_sell_screen.dart';
 import '../widgets/app_bottom_nav.dart';
-import '../widgets/back_to_menu.dart';
+import '../menus/customer_menu.dart';
 
 enum Timeframe { fiveDay, oneMonth, threeMonth, sixMonth, oneYear, fiveYear, all }
 
@@ -149,7 +149,7 @@ class _StockChartScreenState extends State<StockChartScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (context) => const _StockSearchSheet(),
+      builder: (context) => const StockSearchSheet(),
     );
 
     if (selected != null && selected != _symbol) {
@@ -177,18 +177,60 @@ class _StockChartScreenState extends State<StockChartScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('$_symbol Price Chart'),
-        actions: const [
-          BackToCustomerMenuButton(),
-          SizedBox(width: 8),
-        ],
+        toolbarHeight: 72,
+        automaticallyImplyLeading: false,
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: IconButton(
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CustomerMenu()),
+                    (route) => false,
+                  );
+                },
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Back',
+              ),
+            ),
+
+            const SizedBox(width: 20),
+
+            Expanded(
+              child: Text(
+                '$_symbol Stock Price',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ),
+          ],
+        ),
+        // actions: const [
+        //   BackToCustomerMenuButton(),
+        //   SizedBox(width: 8),
+        // ],
       ),
       bottomNavigationBar: AppBottomNav(
         currentIndex: 0,
-        onSearch: _openSearch,
         onTrade: _openTrade,
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _openSearch,
+        icon: const Icon(Icons.search),
+        label: const Text('Stock'),
       ),
       body: Column(
         children: [
@@ -425,14 +467,14 @@ class _StockChartScreenState extends State<StockChartScreen> {
   }
 }
 
-class _StockSearchSheet extends StatefulWidget {
-  const _StockSearchSheet();
+class StockSearchSheet extends StatefulWidget {
+  const StockSearchSheet({super.key});
 
   @override
-  State<_StockSearchSheet> createState() => _StockSearchSheetState();
+  State<StockSearchSheet> createState() => _StockSearchSheetState();
 }
 
-class _StockSearchSheetState extends State<_StockSearchSheet> {
+class _StockSearchSheetState extends State<StockSearchSheet> {
   final TextEditingController _controller = TextEditingController();
   List<Map<String, String>> _filtered = kTopStocks;
 
