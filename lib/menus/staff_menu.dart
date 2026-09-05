@@ -66,7 +66,6 @@ class _StaffMenuState extends State<StaffMenu> {
     if (confirm != true) return;
 
     try {
-      // 1. Clear all images from the Supabase Storage bucket
       try {
         final files = await _supabase.storage.from('news_images').list();
         if (files.isNotEmpty) {
@@ -77,11 +76,9 @@ class _StaffMenuState extends State<StaffMenu> {
         debugPrint('Warning: Failed to clear storage bucket or it was empty: $e');
       }
 
-      // 2. Exact list of tables based on your database structure
       final tablesToClear = [
         'news_reports',
         'news_posts',
-        'fuel_inventory',
         'portfolio_holdings',
         'refund_requests',
         'stock_trades',
@@ -236,8 +233,6 @@ class _StaffMenuState extends State<StaffMenu> {
           const SizedBox(height: 20),
           const Divider(),
           const SizedBox(height: 20),
-
-          // --- SYSTEM RESET CARD ---
           Card(
             elevation: 4,
             shape: RoundedRectangleBorder(
