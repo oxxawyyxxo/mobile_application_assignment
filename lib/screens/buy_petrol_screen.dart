@@ -144,11 +144,13 @@ class _BuyPetrolScreenState extends State<BuyPetrolScreen> {
         );
       } else {
         await _fetchUserData();
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
         setState(() {
           _litresCtrl.clear();
           _redeemPoints = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           const SnackBar(
             content: Text('Purchase Successful!'),
             backgroundColor: Colors.green,
@@ -218,50 +220,46 @@ class _BuyPetrolScreenState extends State<BuyPetrolScreen> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
+      appBar: AppBar(
+        toolbarHeight: 72,
+        automaticallyImplyLeading: false,
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Back',
+              ),
+            ),
+            const SizedBox(width: 20),
+            Text(
+              'Buy Petrol',
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const Spacer(),
+            IconButton(
+              onPressed: () => _showRedeemPointsDialog(),
+              icon: Icon(Icons.info, color: colorScheme.primary, size: 40),
+            ),
+          ],
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // App Bar replacement
-              Row(
-                children: [
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back),
-                      tooltip: 'Back',
-                    ),
-                  ),
-
-                  SizedBox(width: 20),
-
-                  Text(
-                    'Buy Petrol',
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-
-                  Spacer(),
-
-                  IconButton(
-                    onPressed: () => _showRedeemPointsDialog(),
-                    icon: Icon(Icons.info, color: colorScheme.primary ,size: 40)
-                  )
-                ],
-              ),
-
-
-              const SizedBox(height: 20),
-
               // User Balance Card
               Card(
                 color: Colors.blue.shade50,
