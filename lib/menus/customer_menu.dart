@@ -10,7 +10,7 @@ import '../screens/stock_chart_screen.dart';
 class CustomerMenu extends StatefulWidget {
   final String name;
 
-  const CustomerMenu({Key? key, required this.name}) : super(key: key);
+  const CustomerMenu({super.key, this.name = ''});
 
   @override
   State<CustomerMenu> createState() => _CustomerMenuState();
@@ -18,11 +18,34 @@ class CustomerMenu extends StatefulWidget {
 
 class _CustomerMenuState extends State<CustomerMenu> {
   final _supabase = Supabase.instance.client;
+  String _displayName = '';
 
   @override
   void initState() {
     super.initState();
+    _displayName = widget.name;
+    _fetchNameIfNeeded();
     _startFuelAvailabilityListener();
+  }
+
+  Future<void> _fetchNameIfNeeded() async {
+    if (_displayName.isNotEmpty) return;
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+    try {
+      final profile = await _supabase
+          .from('user_profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .maybeSingle();
+      if (profile != null && profile['full_name'] != null && mounted) {
+        setState(() {
+          _displayName = profile['full_name'] as String;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching name: $e');
+    }
   }
 
   void _startFuelAvailabilityListener(){
@@ -74,6 +97,37 @@ class _CustomerMenuState extends State<CustomerMenu> {
     );
 
     return Scaffold(
+      appBar: AppBar(
+        toolbarHeight: 72,
+        automaticallyImplyLeading: false,
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.verified_user_outlined,
+                size: 24,
+                color: colorScheme.onPrimaryContainer,
+              ),
+            ),
+
+            const SizedBox(width: 20),
+
+            Text(
+              'Customer Menu',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -83,35 +137,13 @@ class _CustomerMenuState extends State<CustomerMenu> {
             ),
             child: Column(
               children: [
-                // Logo / icon
-                Row(
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Icon(
-                        Icons.verified_user_outlined,
-                        size: 28,
-                        color: colorScheme.onPrimaryContainer,
-                      ),
-                    ),
-
-                    SizedBox(width: 32),
-
-                    Text(
-                      '${widget.name}',
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+                Text(
+                  _displayName.isNotEmpty ? 'Hi, $_displayName.' : 'Customer',
+                  style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
                 ),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 30),
 
                 ElevatedButton.icon(
                   icon: const Icon(Icons.show_chart),
@@ -152,6 +184,7 @@ class _CustomerMenuState extends State<CustomerMenu> {
                 ElevatedButton.icon(
                   icon: const Icon(Icons.show_chart),
                   label: const Text('Markets & Trading'),
+                  style: buttonStyle,
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const StockChartScreen()),
@@ -163,6 +196,7 @@ class _CustomerMenuState extends State<CustomerMenu> {
                 ElevatedButton.icon(
                   icon: Icon(Icons.newspaper),
                   label: const Text("Global News & Community"),
+                  style: buttonStyle,
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const GlobalNewsScreen()),
