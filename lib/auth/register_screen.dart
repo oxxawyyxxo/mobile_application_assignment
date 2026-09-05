@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/user_model.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -53,7 +53,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'full_name': fullnameCtrl.text.trim(),
           'role': 'User',
         },
-      );// 2. Explicitly insert into user_profiles table (Backup for trigger)
+      ); // 2. Explicitly insert into user_profiles table (Backup for trigger)
       if (response.user != null) {
         await _supabase.from('user_profiles').upsert({
           'id': response.user!.id,
@@ -65,7 +65,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registration successful! Please login.')),
+          const SnackBar(
+              content: Text('Registration successful! Please login.')),
         );
         Navigator.pop(context);
       }
@@ -75,7 +76,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Profile Error: ${e.toString()}'), backgroundColor: Colors.red),
+        SnackBar(content: Text('Profile Error: ${e.toString()}'),
+            backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -92,9 +94,44 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final colorScheme = Theme
+        .of(context)
+        .colorScheme;
 
     return Scaffold(
+      appBar: AppBar(
+        toolbarHeight: 72,
+        automaticallyImplyLeading: false,
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            // Back button
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Back',
+              ),
+            ),
+
+            const SizedBox(width: 20),
+
+            // Heading
+            Text(
+              'Create account',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ],
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -108,48 +145,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Row(
-                      children: [
-                        // Back button
-                        Container(
-                          width: 56,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            color: colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: IconButton(
-                            onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.arrow_back),
-                            tooltip: 'Back',
-                          ),
-                        ),
-
-                        SizedBox(width: 20),
-
-                        // Heading
-                        Text(
-                          'Create account',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineMedium
-                              ?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 20),
-
                     Text(
                       'Enter your details to get started.',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyLarge
-                          ?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
                     ),
 
                     const SizedBox(height: 40),
@@ -161,14 +161,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       autofillHints: const [
                         AutofillHints.name,
                       ],
+                      inputFormatters: [
+                        LengthLimitingTextInputFormatter(15),
+                      ],
+                      maxLength: 15,
                       decoration: const InputDecoration(
                         labelText: 'Full name',
                         prefixIcon: Icon(Icons.person_outline),
                         border: OutlineInputBorder(),
                       ),
                       validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
+                        if (value == null || value
+                            .trim()
+                            .isEmpty) {
                           return 'Enter your full name';
+                        }
+                        if (value.trim().length > 15) {
+                          return 'Full name cannot exceed 15 characters';
                         }
 
                         return null;
@@ -192,7 +201,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       validator: (value) {
                         if (value == null ||
-                            value.trim().isEmpty ||
+                            value
+                                .trim()
+                                .isEmpty ||
                             !value.contains('@')) {
                           return 'Enter a valid email address';
                         }
@@ -242,7 +253,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Text(
                       'At least 8 characters with uppercase, lowercase, '
                           'and a special character.',
-                      style: Theme.of(context)
+                      style: Theme
+                          .of(context)
                           .textTheme
                           .bodySmall
                           ?.copyWith(
