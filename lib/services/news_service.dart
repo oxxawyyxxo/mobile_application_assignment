@@ -8,12 +8,81 @@ import '../models/news_post.dart';
 import '../models/official_news.dart';
 import 'news_local_db.dart';
 import 'dart:convert';
+import '../models/news_comment.dart';
 
 class NewsService {
   final SupabaseClient _supabase = Supabase.instance.client;
   final NewsLocalDb _localDb = NewsLocalDb();
 
   String? get currentUserId => _supabase.auth.currentUser?.id;
+
+  final Map<String, String> _userNameCache = {};
+
+  Future<String> getUserName(String userId) async {
+    if (_userNameCache.containsKey(userId)) return _userNameCache[userId]!;
+
+    try {
+      final res = await _supabase
+          .from('user_profiles')
+          .select('full_name')
+          .eq('id', userId)
+          .maybeSingle();
+
+      final name = res?['full_name'] as String?;
+
+      if (name != null && name.isNotEmpty) {
+        _userNameCache[userId] = name;
+        return name;
+      } else {
+        return 'User ${userId.substring(0, 5)}';
+      }
+    } catch (e) {
+      print('=== GET USER NAME ERROR ===');
+      print(e.toString());
+      return 'User ${userId.substring(0, 5)}';
+    }
+  }
+
+  Stream<List<Map<String, dynamic>>> getLikesStream(String postId) {
+    return _supabase.from('post_likes').stream(primaryKey: ['id']).eq('post_id', postId);
+  }
+
+  Future<void> toggleLike(String postId, bool isCurrentlyLiked) async {
+    if (currentUserId == null) return;
+    if (isCurrentlyLiked) {
+      await _supabase.from('post_likes').delete().match({'post_id': postId, 'user_id': currentUserId!});
+    } else {
+      await _supabase.from('post_likes').insert({'post_id': postId, 'user_id': currentUserId});
+    }
+  }
+
+  Stream<List<NewsComment>> getCommentsStream(String postId) {
+    return _supabase.from('news_comments').stream(primaryKey: ['id']).eq('post_id', postId).order('created_at').map((data) {
+      return data.map((e) => NewsComment.fromMap(e)).toList();
+    });
+  }
+
+  Future<void> addComment(String postId, String content) async {
+    if (currentUserId == null || content.trim().isEmpty) return;
+    await _supabase.from('news_comments').insert({
+      'post_id': postId,
+      'author_id': currentUserId,
+      'content': content.trim(),
+    });
+  }
+
+  Future<void> reportComment(String commentId) async {
+    if (currentUserId == null) return;
+    await _supabase.from('news_reports').insert({
+      'comment_id': commentId,
+      'reporter_id': currentUserId,
+      'reason': 'Inappropriate comment content',
+    });
+  }
+
+  Future<void> deleteComment(String commentId) async {
+    await _supabase.from('news_comments').update({'status': 'user_deleted'}).eq('id', commentId);
+  }
 
   Future<bool> checkIfBanned() async {
     if (currentUserId == null) return false;

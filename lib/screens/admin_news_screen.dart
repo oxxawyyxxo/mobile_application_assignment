@@ -12,10 +12,16 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
   final _supabase = Supabase.instance.client;
 
 
-  Future<void> _removePost(String postId) async {
-    await _supabase.from('news_posts').update({'status': 'admin_removed'}).eq('id', postId);
-    await _supabase.from('news_reports').delete().eq('post_id', postId);
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post removed')));
+  Future<void> _removeContent(String? postId, String? commentId) async {
+    if (postId != null) {
+      await _supabase.from('news_posts').update({'status': 'admin_removed'}).eq('id', postId);
+      await _supabase.from('news_reports').delete().eq('post_id', postId);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post removed')));
+    } else if (commentId != null) {
+      await _supabase.from('news_comments').update({'status': 'admin_removed'}).eq('id', commentId);
+      await _supabase.from('news_reports').delete().eq('comment_id', commentId);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Comment removed')));
+    }
   }
 
   Future<void> _banUser(String userId) async {
@@ -172,7 +178,8 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
                       IconButton(
                         icon: Icon(Icons.delete, color: colorScheme.error),
                         tooltip: 'Remove Post',
-                        onPressed: () => _removePost(post['id']),
+                        // FIX: Pass post ID as the first parameter, and null for the comment ID
+                        onPressed: () => _removeContent(post['id'], null),
                       ),
                       IconButton(
                         icon: Icon(Icons.block, color: colorScheme.tertiary),
@@ -210,11 +217,15 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
           itemCount: reports.length,
           itemBuilder: (context, index) {
             final report = reports[index];
+            final isCommentReport = report['comment_id'] != null;
+
             return Card(
               margin: const EdgeInsets.all(8.0),
               child: ListTile(
                 leading: Icon(Icons.warning, color: colorScheme.tertiary),
-                title: Text('Reported Post ID: ${report['post_id']}'),
+                title: Text(isCommentReport
+                    ? 'Reported Comment ID: ${report['comment_id']}'
+                    : 'Reported Post ID: ${report['post_id']}'),
                 subtitle: Text('Reason: ${report['reason']}\nReported by: ${report['reporter_id']}'),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -225,8 +236,8 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
                     ),
                     IconButton(
                       icon: Icon(Icons.delete, color: colorScheme.error),
-                      tooltip: 'Remove Offending Post',
-                      onPressed: () => _removePost(report['post_id']),
+                      tooltip: 'Remove Offending Content',
+                      onPressed: () => _removeContent(report['post_id'], report['comment_id']),
                     ),
                   ],
                 ),
