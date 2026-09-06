@@ -20,7 +20,7 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
   @override
   void initState() {
     super.initState();
-    _priceFuture = GovDataService.fetchFuelPrices(limit: 52);
+    _priceFuture = GovDataService.fetchFuelPrices();
   }
 
   List<FuelPrice> _filterByTimeframe(List<FuelPrice> sortedPrices) {
@@ -33,6 +33,7 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
     if (_selectedTimeframe == '1M') days = 30;
     if (_selectedTimeframe == '3M') days = 90;
     if (_selectedTimeframe == '6M') days = 180;
+    if (_selectedTimeframe == '1Y') days = 365;
 
     final cutoff = latestDate.subtract(Duration(days: days));
     return sortedPrices.where((p) {
@@ -135,24 +136,36 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
       }
     }
 
-    const double yInterval = 0.1;
+    double yInterval;
     double minY;
     double maxY;
 
     if (rawMin == double.infinity) {
+      yInterval = 0.5;
       minY = 1.0;
       maxY = 5.0;
     } else {
-      minY = ((rawMin - 0.02) / yInterval).floorToDouble() * yInterval;
-      if (minY < 0) minY = 0.0;
-      maxY = ((rawMax + 0.02) / yInterval).ceilToDouble() * yInterval;
+      double range = rawMax - rawMin;
+      if (range <= 0.6) {
+        yInterval = 0.1;
+      } else if (range <= 1.5) {
+        yInterval = 0.2;
+      } else if (range <= 3.5) {
+        yInterval = 0.5;
+      } else {
+        yInterval = 1.0;
+      }
 
-      minY = (minY * 10).round() / 10.0;
-      maxY = (maxY * 10).round() / 10.0;
+      minY = ((rawMin - (yInterval * 0.1)) / yInterval).floorToDouble() * yInterval;
+      if (minY < 0) minY = 0.0;
+      maxY = ((rawMax + (yInterval * 0.1)) / yInterval).ceilToDouble() * yInterval;
+
+      minY = (minY * 100).round() / 100.0;
+      maxY = (maxY * 100).round() / 100.0;
 
       if (minY >= maxY) {
         maxY = (minY + yInterval * 2);
-        maxY = (maxY * 10).round() / 10.0;
+        maxY = (maxY * 100).round() / 100.0;
       }
     }
 
@@ -166,7 +179,7 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
             children: [
               Wrap(
                 spacing: 6,
-                children: ['1M', '3M', '6M', 'ALL'].map((tf) {
+                children: ['1M', '3M', '6M', '1Y', 'ALL'].map((tf) {
                   final isSelected = _selectedTimeframe == tf;
                   return ChoiceChip(
                     label: Text(tf, style: TextStyle(fontSize: 12, color: isSelected ? Colors.white : Colors.black)),
@@ -205,7 +218,7 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
               LineChartData(
                 minY: minY,
                 maxY: maxY,
-                gridData: const FlGridData(
+                gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
                   horizontalInterval: yInterval,
@@ -262,10 +275,14 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
                           return const SizedBox.shrink();
                         }
                         if (index >= 0 && index < prices.length) {
+                          final dateStr = prices[index].date;
+                          final displayDate = (_selectedTimeframe == 'ALL' || _selectedTimeframe == '1Y')
+                              ? (dateStr.length >= 7 ? dateStr.substring(0, 7) : dateStr)
+                              : (dateStr.length >= 10 ? dateStr.substring(5) : dateStr);
                           return Padding(
                             padding: const EdgeInsets.only(top: 6.0),
                             child: Text(
-                              prices[index].date.substring(5),
+                              displayDate,
                               style: const TextStyle(fontSize: 9),
                             ),
                           );
@@ -332,7 +349,7 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
       color: color,
       barWidth: 3,
       isCurved: true,
-      dotData: const FlDotData(show: true),
+      dotData: FlDotData(show: prices.length <= 50),
       belowBarData: BarAreaData(show: true, color: color.withValues(alpha: 0.1)),
     );
   }
