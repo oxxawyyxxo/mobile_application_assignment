@@ -79,14 +79,14 @@ class LocalDbService {
     await batch.commit();
   }
 
-  static Future<List<FuelPrice>> getCachedFuelPrices() async{
+  static Future<List<FuelPrice>> getCachedFuelPrices({int? limit}) async {
     final db = await database;
     final res = await db.query(
       'cached_fuel_prices',
       where: 'series_type = ?',
       whereArgs: ['level'],
-      orderBy: 'date DESC',
-      limit: 15
+      orderBy: 'date ASC',
+      limit: limit,
     );
     return res.map((e) => FuelPrice.fromJson(e)).toList();
   }

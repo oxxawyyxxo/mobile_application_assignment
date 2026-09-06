@@ -7,8 +7,10 @@ class GovDataService {
   static const String _baseUrl = 'https://api.data.gov.my/data-catalogue';
   static const String _datasetId = 'fuelprice';
 
-  static Future<List<FuelPrice>> fetchFuelPrices({int limit = 15}) async {
-    final Uri url = Uri.parse('$_baseUrl?id=$_datasetId&limit=$limit');
+  static Future<List<FuelPrice>> fetchFuelPrices({int? limit}) async {
+    final Uri url = limit != null
+        ? Uri.parse('$_baseUrl?id=$_datasetId&limit=$limit')
+        : Uri.parse('$_baseUrl?id=$_datasetId');
 
     try {
       final response = await http.get(url);
