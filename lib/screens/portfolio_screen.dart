@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'stock_chart_screen.dart';
 import '../widgets/app_bottom_nav.dart';
-import '../widgets/back_to_menu.dart';
+import '../menus/customer_menu.dart';
 import '../models/transaction_model.dart';
+import '../models/stock_price_model.dart';
+import '../services/stock_data_service.dart';
 
 class PortfolioScreen extends StatefulWidget {
   const PortfolioScreen({super.key});
@@ -16,29 +18,13 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   final _supabase = Supabase.instance.client;
   late Future<List<Map<String, dynamic>>> _holdingsFuture;
   late Future<List<TransactionEntry>> _transactionsFuture;
-  double? _creditBalance;
+  double? _totalShareValue;
 
   @override
   void initState() {
     super.initState();
     _holdingsFuture = _fetchHoldings();
     _transactionsFuture = _fetchTransactions();
-    _fetchBalance();
-  }
-
-  Future<void> _fetchBalance() async {
-    final user = _supabase.auth.currentUser;
-    if (user == null) return;
-    final profile = await _supabase
-        .from('user_profiles')
-        .select('credit_balance')
-        .eq('id', user.id)
-        .single();
-    if (mounted) {
-      setState(() {
-        _creditBalance = (profile['credit_balance'] as num?)?.toDouble() ?? 0.0;
-      });
-    }
   }
 
   Future<List<Map<String, dynamic>>> _fetchHoldings() async {
@@ -52,15 +38,54 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
         .gt('quantity', 0)
         .order('symbol');
 
-    return List<Map<String, dynamic>>.from(rows);
+    final holdings = List<Map<String, dynamic>>.from(rows);
+    if (holdings.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _totalShareValue = 0.0;
+        });
+      }
+      return [];
+    }
+
+    final symbols = holdings.map((h) => h['symbol'] as String).toList();
+    Map<String, List<StockPrice>> pricesMap = {};
+    try {
+      pricesMap = await StockDataService.fetchMultipleStockPrices(symbols);
+    } catch (e) {
+      debugPrint('Error fetching stock prices for portfolio: $e');
+    }
+
+    double totalWorth = 0.0;
+    for (final h in holdings) {
+      final symbol = h['symbol'] as String;
+      final quantity = (h['quantity'] as num).toDouble();
+      final avgPrice = (h['avg_price'] as num).toDouble();
+
+      final prices = pricesMap[symbol];
+      final currentPrice = (prices != null && prices.isNotEmpty)
+          ? prices.first.close
+          : avgPrice;
+
+      final marketValue = quantity * currentPrice;
+      h['current_price'] = currentPrice;
+      h['market_value'] = marketValue;
+      totalWorth += marketValue;
+    }
+
+    if (mounted) {
+      setState(() {
+        _totalShareValue = totalWorth;
+      });
+    }
+
+    return holdings;
   }
 
   Future<List<TransactionEntry>> _fetchTransactions() async {
     final user = _supabase.auth.currentUser;
     if (user == null) return [];
 
-    // Fetch both trade history and top-up history, then merge + sort
-    // client-side since they're separate tables.
     final trades = await _supabase
         .from('stock_trades')
         .select('symbol, side, quantity, price, amount, created_at')
@@ -75,8 +100,6 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
         .order('created_at', ascending: false)
         .limit(30);
 
-    // refund_status isn't a column on topup_transactions - derive it by
-    // looking up any refund_requests row tied to each top-up.
     final refundRows = await _supabase
         .from('refund_requests')
         .select('topup_transaction_id, status')
@@ -101,11 +124,6 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   }
 
   Future<void> _showRefundNotice() async {
-    // Fast local check: if we already know (from the last transactions
-    // fetch) that a refund is pending, deny immediately without even
-    // calling the server. This is just a UX shortcut - request_refund()
-    // in the DB still enforces this for real, so it's safe if this cache
-    // is stale.
     final transactions = await _transactionsFuture;
     final hasPendingRefund = transactions.any(
           (t) => t.isTopup && t.refundStatus == 'pending',
@@ -118,8 +136,6 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
       return;
     }
 
-    // Check eligibility first - if it fails, deny immediately without
-    // showing the "Continue" option at all.
     Map<String, dynamic> eligibility;
     try {
       eligibility = await _supabase.rpc('check_refund_eligibility');
@@ -193,7 +209,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   bool _isSubmittingRefund = false;
 
   Future<void> _submitRefundRequest() async {
-    if (_isSubmittingRefund) return; // guard against double-tap races
+    if (_isSubmittingRefund) return;
     setState(() => _isSubmittingRefund = true);
 
     try {
@@ -213,8 +229,6 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
       _refresh();
     } catch (e) {
       if (!mounted) return;
-      // The RPC's raised exception message surfaces here, e.g. "Refund
-      // window has expired" or "You already have a pending refund request".
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
@@ -233,8 +247,6 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
     }
   }
 
-  // Supabase RPC errors come wrapped (e.g. PostgrestException); strip down
-  // to just the raised message for a cleaner dialog.
   String _extractErrorMessage(Object e) {
     final text = e.toString();
     final match = RegExp(r'message:\s*(.+?)(,\s*code:|$)').firstMatch(text);
@@ -243,20 +255,56 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
 
   Future<void> _refresh() async {
     setState(() {
+      _totalShareValue = null;
       _holdingsFuture = _fetchHoldings();
       _transactionsFuture = _fetchTransactions();
     });
-    await _fetchBalance();
   }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('My Portfolio'),
-        actions: const [
-          BackToCustomerMenuButton(),
-          SizedBox(width: 8),
-        ],),
+      appBar: AppBar(
+        toolbarHeight: 72,
+        automaticallyImplyLeading: false,
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: IconButton(
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CustomerMenu()),
+                    (route) => false,
+                  );
+                },
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Back',
+              ),
+            ),
+
+            const SizedBox(width: 20),
+
+            Expanded(
+              child: Text(
+                'My Portfolio',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ),
+          ],
+        ),
+      ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 3),
       body: RefreshIndicator(
         onRefresh: _refresh,
@@ -272,11 +320,12 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     children: [
-                      const Text('Credit Balance', style: TextStyle(fontSize: 16)),
+                      const Text('Total Share Value', style: TextStyle(fontSize: 16)),
+                      const SizedBox(height: 4),
                       Text(
-                        _creditBalance == null
+                        _totalShareValue == null
                             ? '...'
-                            : 'RM ${_creditBalance!.toStringAsFixed(2)}',
+                            : 'RM ${_totalShareValue!.toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
@@ -351,7 +400,11 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                       final symbol = h['symbol'] as String;
                       final quantity = (h['quantity'] as num).toDouble();
                       final avgPrice = (h['avg_price'] as num).toDouble();
-                      final costBasis = quantity * avgPrice;
+                      final currentPrice =
+                          (h['current_price'] as num?)?.toDouble() ?? avgPrice;
+                      final marketValue =
+                          (h['market_value'] as num?)?.toDouble() ??
+                              (quantity * avgPrice);
 
                       return Card(
                         child: ListTile(
@@ -359,10 +412,10 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                           title: Text(symbol,
                               style: const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Text(
-                            '${quantity.toStringAsFixed(4)} shares · Avg RM ${avgPrice.toStringAsFixed(2)}',
+                            '${quantity.toStringAsFixed(6)} shares · RM ${currentPrice.toStringAsFixed(2)}',
                           ),
                           trailing: Text(
-                            'RM ${costBasis.toStringAsFixed(2)}',
+                            'RM ${marketValue.toStringAsFixed(2)}',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           onTap: () async {
@@ -458,4 +511,3 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
     );
   }
 }
-

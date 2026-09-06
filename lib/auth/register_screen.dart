@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/user_model.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -18,6 +18,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController passwordCtrl = TextEditingController();
 
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
@@ -39,86 +40,260 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _register() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
+    if (!_formKey.currentState!.validate()) return;
 
-      try {
-        // 1. Sign up user in Supabase Auth
-        final AuthResponse response = await _supabase.auth.signUp(
-          email: emailCtrl.text.trim(),
-          password: passwordCtrl.text,
-          data: {
-            'full_name': fullnameCtrl.text.trim(),
-            'role': 'User',
-          },
-        );
+    setState(() => _isLoading = true);
 
-        // 2. Explicitly insert into user_profiles table (Backup for trigger)
-        if (response.user != null) {
-          await _supabase.from('user_profiles').upsert({
-            'id': response.user!.id,
-            'email': emailCtrl.text.trim(),
-            'full_name': fullnameCtrl.text.trim(),
-            'role': 'User',
-          });
-        }
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Registration successful! Please login.')),
-          );
-          Navigator.pop(context);
-        }
-      } on AuthException catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message), backgroundColor: Colors.red),
-        );
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Profile Error: ${e.toString()}'), backgroundColor: Colors.red),
-        );
-      } finally {
-        if (mounted) setState(() => _isLoading = false);
+    try {
+      final AuthResponse response = await _supabase.auth.signUp(
+        email: emailCtrl.text.trim(),
+        password: passwordCtrl.text,
+        data: {
+          'full_name': fullnameCtrl.text.trim(),
+          'role': 'User',
+        },
+      );
+      if (response.user != null) {
+        await _supabase.from('user_profiles').upsert({
+          'id': response.user!.id,
+          'email': emailCtrl.text.trim(),
+          'full_name': fullnameCtrl.text.trim(),
+          'role': 'User',
+        });
       }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Registration successful! Please login.')),
+        );
+        Navigator.pop(context);
+      }
+    } on AuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Profile Error: ${e.toString()}'),
+            backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
+  void dispose() {
+    emailCtrl.dispose();
+    fullnameCtrl.dispose();
+    passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme
+        .of(context)
+        .colorScheme;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('User Registration')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              TextFormField(
-                controller: emailCtrl,
-                decoration: const InputDecoration(labelText: 'Email Address'),
-                validator: (val) => val == null || val.isEmpty || !val.contains('@') ? 'Enter a valid email' : null,
+      appBar: AppBar(
+        toolbarHeight: 72,
+        automaticallyImplyLeading: false,
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(16),
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: fullnameCtrl,
-                decoration: const InputDecoration(labelText: 'Full Name'),
-                validator: (val) => val == null || val.isEmpty ? 'Enter your full name' : null,
+              child: IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Back',
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: passwordCtrl,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Password'),
-                validator: _validatePassword,
+            ),
+
+            const SizedBox(width: 20),
+
+            Text(
+              'Create account',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ],
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: 420,
+            ),
+            child: Form(
+              key: _formKey,
+              child: AutofillGroup(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Enter your details to get started.',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+
+                    const SizedBox(height: 40),
+
+                    TextFormField(
+                      controller: fullnameCtrl,
+                      textInputAction: TextInputAction.next,
+                      autofillHints: const [
+                        AutofillHints.name,
+                      ],
+                      inputFormatters: [
+                        LengthLimitingTextInputFormatter(15),
+                      ],
+                      maxLength: 15,
+                      decoration: const InputDecoration(
+                        labelText: 'Full name',
+                        prefixIcon: Icon(Icons.person_outline),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if (value == null || value
+                            .trim()
+                            .isEmpty) {
+                          return 'Enter your full name';
+                        }
+                        if (value.trim().length > 15) {
+                          return 'Full name cannot exceed 15 characters';
+                        }
+
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    TextFormField(
+                      controller: emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      autofillHints: const [
+                        AutofillHints.email,
+                      ],
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        prefixIcon: Icon(Icons.mail_outline),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if (value == null ||
+                            value
+                                .trim()
+                                .isEmpty ||
+                            !value.contains('@')) {
+                          return 'Enter a valid email address';
+                        }
+
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    TextFormField(
+                      controller: passwordCtrl,
+                      obscureText: _obscurePassword,
+                      textInputAction: TextInputAction.done,
+                      autofillHints: const [
+                        AutofillHints.newPassword,
+                      ],
+                      onFieldSubmitted: (_) {
+                        if (!_isLoading) {
+                          _register();
+                        }
+                      },
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                        ),
+                      ),
+                      validator: _validatePassword,
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    Text(
+                      'At least 8 characters with uppercase, lowercase, '
+                          'and a special character.',
+                      style: Theme
+                          .of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    SizedBox(
+                      height: 52,
+                      child: FilledButton(
+                        onPressed: _isLoading ? null : _register,
+                        child: _isLoading
+                            ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                          ),
+                        )
+                            : const Text('Create account'),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Already have an account?',
+                          style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Log in'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 24),
-              _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : ElevatedButton(
-                onPressed: _register,
-                child: const Text('Register'),
-              ),
-            ],
+            ),
           ),
         ),
       ),

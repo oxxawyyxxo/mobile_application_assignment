@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/app_bottom_nav.dart';
-import '../widgets/back_to_menu.dart';
+import '../menus/customer_menu.dart';
 
 class TopUpScreen extends StatefulWidget {
   const TopUpScreen({super.key});
@@ -16,9 +17,6 @@ class _TopUpScreenState extends State<TopUpScreen> {
   bool _isLoading = false;
   double? _currentBalance;
 
-  // Locked-in amount once the user taps "Done" - controls whether the QR
-  // + confirm section is shown. Cleared after a successful top up or if
-  // the user edits the amount again.
   double? _lockedAmount;
 
   final List<double> _quickAmounts = [10, 20, 50, 100, 200];
@@ -28,8 +26,6 @@ class _TopUpScreenState extends State<TopUpScreen> {
     super.initState();
     _fetchBalance();
     _amountCtrl.addListener(() {
-      // If the user edits the amount after locking it in, go back to
-      // the entry step rather than confirming payment for a stale value.
       if (_lockedAmount != null) {
         setState(() => _lockedAmount = null);
       }
@@ -117,21 +113,55 @@ class _TopUpScreenState extends State<TopUpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final bool showQrStep = _lockedAmount != null;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Top Up Credit'),
-        actions: const [
-          BackToCustomerMenuButton(),
-          SizedBox(width: 8),
-        ],),
+      appBar: AppBar(
+        toolbarHeight: 72,
+        automaticallyImplyLeading: false,
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: IconButton(
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CustomerMenu()),
+                    (route) => false,
+                  );
+                },
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Back',
+              ),
+            ),
+
+            const SizedBox(width: 20),
+
+            Expanded(
+              child: Text(
+                'Top Up Credit',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ),
+          ],
+        ),
+      ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 1),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Current balance card
             Card(
               color: Colors.blue.shade50,
               child: Padding(
@@ -164,6 +194,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
               controller: _amountCtrl,
               enabled: !showQrStep,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d{0,9}(\.\d{0,2})?'))],
               decoration: const InputDecoration(
                 prefixText: 'RM ',
                 border: OutlineInputBorder(),
@@ -172,7 +203,6 @@ class _TopUpScreenState extends State<TopUpScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Quick amount chips - hidden once amount is locked in
             if (!showQrStep) ...[
               Wrap(
                 spacing: 8,
@@ -195,7 +225,6 @@ class _TopUpScreenState extends State<TopUpScreen> {
               ),
             ],
 
-            // QR + confirm step - only appears after amount is locked in
             if (showQrStep) ...[
               const Divider(height: 32, thickness: 2),
               Text(

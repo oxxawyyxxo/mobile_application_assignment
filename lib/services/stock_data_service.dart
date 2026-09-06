@@ -8,7 +8,6 @@ class StockDataService {
 
   static double? _cachedFxRate;
 
-  /// convert usd to myr
   static Future<double> _fetchUsdToMyrRate() async {
     if (_cachedFxRate != null) return _cachedFxRate!;
 
@@ -36,9 +35,6 @@ class StockDataService {
     return rate;
   }
 
-  /// Fetches historical prices for [symbol] from Yahoo Finance.
-  /// [range] e.g. '5d', '1mo', '3mo', '6mo', '1y', '5y', 'max'.
-  /// [interval] e.g. '15m', '1d', '1wk', '1mo'.
   static Future<List<StockPrice>> fetchStockPrices(
       String symbol, {
         String range = '1mo',
@@ -47,7 +43,7 @@ class StockDataService {
       }) async {
     final yahooUrl = '$_yahooBase/$symbol?range=$range&interval=$interval';
     final url = Uri.parse('$_proxyBase/?url=${Uri.encodeComponent(yahooUrl)}');
-    print('Fetching URL: $url'); // TEMP DEBUG
+    print('Fetching URL: $url');
 
     try {
       final response = await http.get(url);
@@ -85,7 +81,6 @@ class StockDataService {
 
       final List<StockPrice> prices = [];
       for (int i = 0; i < timestamps.length; i++) {
-        // Yahoo returns nulls for gaps (market closed etc.) - skip those.
         if (opens[i] == null ||
             highs[i] == null ||
             lows[i] == null ||

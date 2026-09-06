@@ -9,7 +9,7 @@ import '../screens/admin_refund_screen.dart';
 class StaffMenu extends StatefulWidget {
   final String name;
 
-  const StaffMenu({Key? key, required this.name}) : super(key: key);
+  const StaffMenu({super.key, required this.name});
 
   @override
   State<StaffMenu> createState() => _StaffMenuState();
@@ -29,8 +29,10 @@ class _StaffMenuState extends State<StaffMenu> {
     }
   }
 
-  // --- GLOBAL SYSTEM RESET ---
   Future<void> _resetAllSystemData() async {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -49,9 +51,12 @@ class _StaffMenuState extends State<StaffMenu> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colorScheme.error,
+              foregroundColor: colorScheme.onError,
+            ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Wipe System Data', style: TextStyle(color: Colors.white)),
+            child: const Text('Wipe System Data'),
           ),
         ],
       ),
@@ -80,7 +85,6 @@ class _StaffMenuState extends State<StaffMenu> {
         'transactions'
       ];
 
-      // 3. Loop and delete
       for (String table in tablesToClear) {
         try {
           await _supabase.from(table).delete().neq('id', '00000000-0000-0000-0000-000000000000');
@@ -91,16 +95,16 @@ class _StaffMenuState extends State<StaffMenu> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('System records and images cleared! Profiles & bans preserved.'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('System records and images cleared! Profiles & bans preserved.'),
+            backgroundColor: colorScheme.primary,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Critical error resetting system data: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Critical error resetting system data: $e'), backgroundColor: colorScheme.error),
         );
       }
     }
@@ -108,17 +112,45 @@ class _StaffMenuState extends State<StaffMenu> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Staff Dashboard'),
-        backgroundColor: Colors.blue,
+        toolbarHeight: 72,
+        automaticallyImplyLeading: false,
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                Icons.badge_outlined,
+                size: 28,
+                color: colorScheme.onPrimaryContainer,
+              ),
+            ),
+            const SizedBox(width: 20),
+            Text(
+              'Staff Dashboard',
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
           Text(
             'Hi, Staff ${widget.name}.',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 30),
@@ -128,10 +160,10 @@ class _StaffMenuState extends State<StaffMenu> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: ListTile(
               contentPadding: const EdgeInsets.all(16),
-              leading: const CircleAvatar(
+              leading: CircleAvatar(
                 radius: 25,
-                backgroundColor: Colors.blue,
-                child: Icon(Icons.local_gas_station, color: Colors.white, size: 28),
+                backgroundColor: colorScheme.primaryContainer,
+                child: Icon(Icons.local_gas_station, color: colorScheme.onPrimaryContainer, size: 28),
               ),
               title: const Text(
                 'Manage Fuel Inventory',
@@ -152,10 +184,10 @@ class _StaffMenuState extends State<StaffMenu> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: ListTile(
               contentPadding: const EdgeInsets.all(16),
-              leading: const CircleAvatar(
+              leading: CircleAvatar(
                 radius: 25,
-                backgroundColor: Colors.blue,
-                child: Icon(Icons.request_quote, color: Colors.white, size: 28),
+                backgroundColor: colorScheme.primaryContainer,
+                child: Icon(Icons.request_quote, color: colorScheme.onPrimaryContainer, size: 28),
               ),
               title: const Text(
                 'Refund Requests',
@@ -176,10 +208,10 @@ class _StaffMenuState extends State<StaffMenu> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: ListTile(
               contentPadding: const EdgeInsets.all(16),
-              leading: const CircleAvatar(
+              leading: CircleAvatar(
                 radius: 25,
-                backgroundColor: Colors.blue,
-                child: Icon(Icons.admin_panel_settings, color: Colors.white, size: 28),
+                backgroundColor: colorScheme.primaryContainer,
+                child: Icon(Icons.admin_panel_settings, color: colorScheme.onPrimaryContainer, size: 28),
               ),
               title: const Text(
                 'Moderate News Community',
@@ -203,21 +235,21 @@ class _StaffMenuState extends State<StaffMenu> {
             elevation: 4,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: Colors.red, width: 1.5),
+              side: BorderSide(color: colorScheme.error, width: 1.5),
             ),
             child: ListTile(
               contentPadding: const EdgeInsets.all(16),
-              leading: const CircleAvatar(
+              leading: CircleAvatar(
                 radius: 25,
-                backgroundColor: Colors.red,
-                child: Icon(Icons.delete_forever, color: Colors.white, size: 28),
+                backgroundColor: colorScheme.errorContainer,
+                child: Icon(Icons.delete_forever, color: colorScheme.onErrorContainer, size: 28),
               ),
-              title: const Text(
+              title: Text(
                 'Reset System Data',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.red),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: colorScheme.error),
               ),
               subtitle: const Text('Wipe all records except profiles & bans'),
-              trailing: const Icon(Icons.warning, color: Colors.red),
+              trailing: Icon(Icons.warning, color: colorScheme.error),
               onTap: _resetAllSystemData,
             ),
           ),
@@ -226,14 +258,15 @@ class _StaffMenuState extends State<StaffMenu> {
           ElevatedButton.icon(
             onPressed: _logout,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.grey.shade800,
+              backgroundColor: colorScheme.error,
+              foregroundColor: colorScheme.onError,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            icon: const Icon(Icons.logout, color: Colors.white),
+            icon: const Icon(Icons.logout),
             label: const Text(
               'Logout',
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
         ],

@@ -34,15 +34,14 @@ class _AdminPetrolScreenState extends State<AdminPetrolScreen> {
             ),
             ElevatedButton(
                 onPressed: () async {
+                  final navigator = Navigator.of(context);
                   final newStock = double.tryParse(controller.text) ?? currentStock;
                   await _supabase
                   .from('fuel_inventory')
                   .update({'stock_litres': newStock})
                   .eq('id', id);
 
-                  if (mounted){
-                    Navigator.pop(context);
-                  }
+                  navigator.pop();
                 },
                 child: const Text("Save")
             )
@@ -53,9 +52,38 @@ class _AdminPetrolScreenState extends State<AdminPetrolScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Manage Fuel Stock'),
+        toolbarHeight: 72,
+        automaticallyImplyLeading: false,
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Back',
+              ),
+            ),
+            const SizedBox(width: 20),
+            Text(
+              'Manage Fuel Stock',
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
           stream: _supabase.from('fuel_inventory').stream(primaryKey: ['id']),
@@ -63,7 +91,7 @@ class _AdminPetrolScreenState extends State<AdminPetrolScreen> {
             if (!snapshot.hasData){
               if (snapshot.hasError) {
                 return Center(
-                  child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)),
+                  child: Text('Error: ${snapshot.error}', style: TextStyle(color: colorScheme.error)),
                 );
               }
 
@@ -115,8 +143,8 @@ class _AdminPetrolScreenState extends State<AdminPetrolScreen> {
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             TextButton.icon(
-                              icon: const Icon(Icons.edit),
-                              label: const Text('Adjust Stock'),
+                              icon: Icon(Icons.edit, color: colorScheme.primary),
+                              label: Text('Adjust Stock', style: TextStyle(color: colorScheme.primary)),
                               onPressed: () => _showUpdateStockDialog(id, fuelType, stock),
                             )
                           ],

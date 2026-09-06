@@ -33,18 +33,56 @@ class _GlobalNewsScreenState extends State<GlobalNewsScreen> {
     }
   }
 
+  PreferredSizeWidget _buildAppBar(BuildContext context, {TabBar? bottom}) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return AppBar(
+      toolbarHeight: 72,
+      automaticallyImplyLeading: false,
+      titleSpacing: 16,
+      title: Row(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back),
+              tooltip: 'Back',
+            ),
+          ),
+
+          const SizedBox(width: 20),
+
+          Expanded(
+            child: Text(
+              'Global News',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ),
+        ],
+      ),
+      bottom: bottom,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Global News')),
+        appBar: _buildAppBar(context),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_isBanned) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Global News')),
+        appBar: _buildAppBar(context),
         body: const Center(child: Text('You are banned from accessing this feature.')),
       );
     }
@@ -52,8 +90,8 @@ class _GlobalNewsScreenState extends State<GlobalNewsScreen> {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Global News'),
+        appBar: _buildAppBar(
+          context,
           bottom: const TabBar(
             tabs: [
               Tab(icon: Icon(Icons.announcement), text: 'Official News'),
@@ -96,7 +134,7 @@ class _GlobalNewsScreenState extends State<GlobalNewsScreen> {
                 children: [
                   const SizedBox(height: 4),
                   Text(
-                    news.description.replaceAll(RegExp(r'<[^>]*>'), ''), // Strip HTML tags
+                    news.description.replaceAll(RegExp(r'<[^>]*>'), ''),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -105,7 +143,6 @@ class _GlobalNewsScreenState extends State<GlobalNewsScreen> {
                 ],
               ),
               onTap: () {
-                // Implement URL launching here if you want users to read the full article
               },
             );
           },

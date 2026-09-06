@@ -16,7 +16,6 @@ class _AdminRefundScreenState extends State<AdminRefundScreen>
   late Future<List<Map<String, dynamic>>> _pendingFuture;
   late Future<List<Map<String, dynamic>>> _historyFuture;
 
-  // Formats a UTC DateTime as UTC+08:00, matching the portfolio screen.
   static String _formatUtc8(DateTime utcTime) {
     final local = utcTime.toUtc().add(const Duration(hours: 8));
     const months = [
@@ -44,8 +43,6 @@ class _AdminRefundScreenState extends State<AdminRefundScreen>
     super.dispose();
   }
 
-  // Joins refund_requests with the requesting user's email for display.
-  // Requires the "Admins can view all refund requests" RLS policy.
   Future<List<Map<String, dynamic>>> _fetchRequests({String? status}) async {
     var query = _supabase.from('refund_requests').select(
         'id, user_id, amount, status, reason, created_at, reviewed_at');
@@ -98,14 +95,14 @@ class _AdminRefundScreenState extends State<AdminRefundScreen>
           );
         },
       );
-      if (reason == null) return; // cancelled
+      if (reason == null) return;
     } else {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
           title: const Text('Approve Refund'),
           content: const Text(
-            'This will deduct the refunded amount from the user\'s credit balance. Continue?',
+            'This will deduct the credit from the user\'s credit balance. Continue?',
           ),
           actions: [
             TextButton(
@@ -130,28 +127,62 @@ class _AdminRefundScreenState extends State<AdminRefundScreen>
       });
 
       if (!mounted) return;
+      final colorScheme = Theme.of(context).colorScheme;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(approve ? 'Refund approved.' : 'Refund denied.'),
-          backgroundColor: approve ? Colors.green : Colors.orange,
+          backgroundColor: approve ? colorScheme.primary : colorScheme.error,
         ),
       );
       _refresh();
     } catch (e) {
       if (!mounted) return;
+      final colorScheme = Theme.of(context).colorScheme;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        SnackBar(content: Text('Error: $e'), backgroundColor: colorScheme.error),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Refund Requests'),
+        toolbarHeight: 72,
+        automaticallyImplyLeading: false,
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Back',
+              ),
+            ),
+            const SizedBox(width: 20),
+            Text(
+              'Refund Requests',
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: colorScheme.primary,
+          labelColor: colorScheme.primary,
+          unselectedLabelColor: colorScheme.onSurfaceVariant,
           tabs: const [
             Tab(text: 'Pending'),
             Tab(text: 'History'),
@@ -169,6 +200,8 @@ class _AdminRefundScreenState extends State<AdminRefundScreen>
   }
 
   Widget _buildPendingList() {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return RefreshIndicator(
       onRefresh: _refresh,
       child: FutureBuilder<List<Map<String, dynamic>>>(
@@ -178,7 +211,7 @@ class _AdminRefundScreenState extends State<AdminRefundScreen>
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(child: Text('Error: ${snapshot.error}', style: TextStyle(color: colorScheme.error)));
           }
 
           final requests = snapshot.data ?? [];
@@ -187,7 +220,7 @@ class _AdminRefundScreenState extends State<AdminRefundScreen>
               physics: const AlwaysScrollableScrollPhysics(),
               children: const [
                 Padding(
-                  padding: EdgeInsets.only(top: 80),
+                  padding: EdgeInsets.only(top: 200),
                   child: Center(child: Text('No pending refund requests.')),
                 ),
               ],
@@ -197,7 +230,7 @@ class _AdminRefundScreenState extends State<AdminRefundScreen>
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: requests.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            separatorBuilder: (context, index) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final r = requests[index];
               final id = r['id'] as String;
@@ -222,7 +255,7 @@ class _AdminRefundScreenState extends State<AdminRefundScreen>
                       Text(
                         'Requested: ${_formatUtc8(createdAt)}',
                         style: TextStyle(
-                            fontSize: 12, color: Colors.grey.shade600),
+                            fontSize: 12, color: colorScheme.onSurfaceVariant),
                       ),
                       const SizedBox(height: 12),
                       Row(
@@ -231,7 +264,7 @@ class _AdminRefundScreenState extends State<AdminRefundScreen>
                             child: OutlinedButton(
                               onPressed: () => _review(id, false),
                               style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.red),
+                                  foregroundColor: colorScheme.error),
                               child: const Text('Deny'),
                             ),
                           ),
@@ -240,7 +273,8 @@ class _AdminRefundScreenState extends State<AdminRefundScreen>
                             child: FilledButton(
                               onPressed: () => _review(id, true),
                               style: FilledButton.styleFrom(
-                                  backgroundColor: Colors.green),
+                                  backgroundColor: colorScheme.primary,
+                                  foregroundColor: colorScheme.onPrimary),
                               child: const Text('Approve'),
                             ),
                           ),
@@ -258,6 +292,8 @@ class _AdminRefundScreenState extends State<AdminRefundScreen>
   }
 
   Widget _buildHistoryList() {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return RefreshIndicator(
       onRefresh: _refresh,
       child: FutureBuilder<List<Map<String, dynamic>>>(
@@ -267,7 +303,7 @@ class _AdminRefundScreenState extends State<AdminRefundScreen>
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(child: Text('Error: ${snapshot.error}', style: TextStyle(color: colorScheme.error)));
           }
 
           final requests = snapshot.data ?? [];
@@ -276,7 +312,7 @@ class _AdminRefundScreenState extends State<AdminRefundScreen>
               physics: const AlwaysScrollableScrollPhysics(),
               children: const [
                 Padding(
-                  padding: EdgeInsets.only(top: 80),
+                  padding: EdgeInsets.only(top: 200),
                   child: Center(child: Text('No reviewed requests yet.')),
                 ),
               ],
@@ -286,7 +322,7 @@ class _AdminRefundScreenState extends State<AdminRefundScreen>
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: requests.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            separatorBuilder: (context, index) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final r = requests[index];
               final amount = (r['amount'] as num).toDouble();
@@ -301,7 +337,7 @@ class _AdminRefundScreenState extends State<AdminRefundScreen>
                 child: ListTile(
                   leading: Icon(
                     isApproved ? Icons.check_circle : Icons.cancel,
-                    color: isApproved ? Colors.green : Colors.red,
+                    color: isApproved ? colorScheme.primary : colorScheme.error,
                   ),
                   title: Text('RM ${amount.toStringAsFixed(2)} · ${status[0].toUpperCase()}${status.substring(1)}'),
                   subtitle: Text(

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../main.dart';
 import '../menus/customer_menu.dart';
 import '../menus/staff_menu.dart';
 import 'register_screen.dart';
@@ -17,11 +16,18 @@ class _LoginScreenState extends State<LoginScreen> {
   final _supabase = Supabase.instance.client;
 
   String _selectedRole = "User";
-  bool _isLoading = false; // Added to handle loading state
+  bool _isLoading = false;
+  bool _obscurePassword = true;
 
-  // Changed to email controller because Supabase requires emails
   final TextEditingController _emailCtrl = TextEditingController();
   final TextEditingController _passwordCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
@@ -33,7 +39,6 @@ class _LoginScreenState extends State<LoginScreen> {
       final password = _passwordCtrl.text;
 
       try {
-        // 1. Authenticate with Supabase
         final response = await _supabase.auth.signInWithPassword(
           email: email,
           password: password,
@@ -41,7 +46,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
         final user = response.user;
         if (user != null) {
-          // 2. Fetch the role and full name from the user_profiles table
           final profileData = await _supabase
               .from('user_profiles')
               .select('role, full_name')
@@ -58,15 +62,13 @@ class _LoginScreenState extends State<LoginScreen> {
           final String userRole = profileData['role'] ?? 'User';
           final String fullName = profileData['full_name'] ?? 'Unknown';
 
-          // 3. Verify they selected the correct role (case-insensitive)
           if (userRole.toLowerCase() != _selectedRole.toLowerCase()) {
-            await _supabase.auth.signOut(); // Log out immediately if wrong role
+            await _supabase.auth.signOut();
             _showErrorDialog('Incorrect role selected for this account.');
             setState(() => _isLoading = false);
             return;
           }
 
-          // 4. Navigate to correct menu
           if (!mounted) return;
           if (userRole.toLowerCase() == 'staff') {
             Navigator.pushReplacement(
@@ -85,7 +87,6 @@ class _LoginScreenState extends State<LoginScreen> {
           }
         }
       } on AuthException catch (e) {
-        // Show Supabase specific errors (e.g., Invalid login credentials)
         _showErrorDialog(e.message);
       } catch (e) {
         _showErrorDialog('An unexpected error occurred: $e');
@@ -99,15 +100,25 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // Helper method to keep your original error dialog style clean
   void _showErrorDialog(String message) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Error'),
+        title: Row(
+          children: [
+            Icon(Icons.error_outline, color: colorScheme.primary, size: 30),
+
+            SizedBox(width: 10),
+
+            const Text('Unable to sign in', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
         content: Text(message),
         actions: [
-          ElevatedButton(
+          TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Close'),
           ),
@@ -116,111 +127,202 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void swipe() {
-    setState(() {
-      if (_selectedRole == 'User') {
-        _selectedRole = 'Staff';
-        return;
-      }
-      _selectedRole = 'User';
-      return;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Login Screen'),
-        backgroundColor: Colors.blue,
+        toolbarHeight: 72,
+        automaticallyImplyLeading: false,
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                Icons.lock_outline_rounded,
+                size: 28,
+                color: colorScheme.onPrimaryContainer,
+              ),
+            ),
+            const SizedBox(width: 20),
+            Text(
+              'Welcome back',
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Row(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: 420,
+            ),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    color: Colors.grey,
-                    height: 80,
-                    width: 120,
-                    alignment: Alignment.center, // Centered your text visually
-                    child: Text(
-                      _selectedRole,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 40),
+                  Text(
+                    'Sign in to continue to your account.',
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(width: 16), // Added spacing between UI elements
-                  ElevatedButton.icon(
-                    onPressed: swipe,
-                    icon: const Icon(Icons.change_circle),
-                    label: const Text('Swap Role'),
-                  )
+
+                  const SizedBox(height: 32),
+
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(
+                        value: 'User',
+                        icon: Icon(Icons.person_outline),
+                        label: Text('User'),
+                      ),
+                      ButtonSegment(
+                        value: 'Staff',
+                        icon: Icon(Icons.badge_outlined),
+                        label: Text('Staff'),
+                      ),
+                    ],
+                    selected: {_selectedRole},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (selection) {
+                      setState(() {
+                        _selectedRole = selection.first;
+                      });
+                    },
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  TextFormField(
+                    controller: _emailCtrl,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [
+                      AutofillHints.email,
+                    ],
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      hintText: 'name@example.com',
+                      prefixIcon: Icon(Icons.mail_outline_rounded),
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Enter your email address';
+                      }
+
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  TextFormField(
+                    controller: _passwordCtrl,
+                    obscureText: _obscurePassword,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: const [
+                      AutofillHints.password,
+                    ],
+                    onFieldSubmitted: (_) {
+                      if (!_isLoading) {
+                        _login();
+                      }
+                    },
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      prefixIcon:
+                      const Icon(Icons.lock_outline_rounded),
+                      suffixIcon: IconButton(
+                        tooltip: _obscurePassword
+                            ? 'Show password'
+                            : 'Hide password',
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword =
+                            !_obscurePassword;
+                          });
+                        },
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                        ),
+                      ),
+                      border: const OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Enter your password';
+                      }
+
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  SizedBox(
+                    height: 52,
+                    child: FilledButton(
+                      onPressed: _isLoading ? null : _login,
+                      child: _isLoading
+                          ? SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: colorScheme.onPrimary,
+                        )
+                      )
+                          : const Text('Sign in'),
+                    ),
+                  ),
+
+                  if (_selectedRole == 'User') ...[
+                    const SizedBox(height: 16),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'New here?',
+                          style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                const RegisterScreen(),
+                              ),
+                            );
+                          },
+                          child: const Text('Create account'),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _emailCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Email Address', // Updated label
-                ),
-                validator: (val) {
-                  if (val == null || val.isEmpty) {
-                    return 'Enter email';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _passwordCtrl,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                ),
-                validator: (val) {
-                  if (val == null || val.isEmpty) {
-                    return 'Enter password';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-              _isLoading
-                  ? const CircularProgressIndicator()
-                  : ElevatedButton(
-                onPressed: _login,
-                child: const Text('Login'),
-              ),
-              if (_selectedRole == 'User')
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const RegisterScreen(),
-                      ),
-                    );
-                  },
-                  child: const Text('Don\'t have an account? Register here'),
-                ),
-              SizedBox(height: 30),
-              ElevatedButton(
-                onPressed: () async {
-                  await AuthSeeder.initializeMockUsers();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Mock users initialized in Supabase!')),
-                    );
-                  }
-                },
-                child: const Text('Seed Admin & User Accounts'),
-              )
-            ],
+            ),
           ),
         ),
       ),

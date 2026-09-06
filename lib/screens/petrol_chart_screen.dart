@@ -14,17 +14,15 @@ class PetrolChartScreen extends StatefulWidget {
 class _PetrolChartScreenState extends State<PetrolChartScreen> {
   late Future<List<FuelPrice>> _priceFuture;
 
-  // Interactive Filter States
   final Set<String> _selectedFuels = {'RON95', 'RON97', 'Diesel'};
-  String _selectedTimeframe = 'ALL'; // Options: '1M', '3M', '6M', 'ALL'
+  String _selectedTimeframe = 'ALL';
 
   @override
   void initState() {
     super.initState();
-    _priceFuture = GovDataService.fetchFuelPrices(limit: 52); // Fetch up to 1 year of data
+    _priceFuture = GovDataService.fetchFuelPrices(limit: 52);
   }
 
-  // Filter dataset by timeframe
   List<FuelPrice> _filterByTimeframe(List<FuelPrice> sortedPrices) {
     if (_selectedTimeframe == 'ALL' || sortedPrices.isEmpty) return sortedPrices;
 
@@ -45,11 +43,43 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Government Petrol Analytics', style: TextStyle(fontWeight: FontWeight.bold)),
+          toolbarHeight: 72,
+          automaticallyImplyLeading: false,
+          titleSpacing: 16,
+          title: Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.arrow_back),
+                  tooltip: 'Back',
+                ),
+              ),
+
+              const SizedBox(width: 20),
+
+              Expanded(
+                child: Text(
+                  'Petrol Analytics',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
+            ],
+          ),
           bottom: const TabBar(
             tabs: [
               Tab(icon: Icon(Icons.show_chart), text: 'Interactive Graph'),
@@ -86,34 +116,44 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
     );
   }
 
-  // ==================== INTERACTIVE GRAPH TAB ====================
   Widget _buildInteractiveGraphTab(List<FuelPrice> prices, FuelPrice latest, FuelPrice? previous) {
-    // Calculate dynamic Y-axis min and max based on active filters
-    double minY = double.infinity;
-    double maxY = double.negativeInfinity;
+    double rawMin = double.infinity;
+    double rawMax = double.negativeInfinity;
 
     for (var p in prices) {
       if (_selectedFuels.contains('RON95')) {
-        minY = min(minY, p.ron95);
-        maxY = max(maxY, p.ron95);
+        rawMin = min(rawMin, p.ron95);
+        rawMax = max(rawMax, p.ron95);
       }
       if (_selectedFuels.contains('RON97')) {
-        minY = min(minY, p.ron97);
-        maxY = max(maxY, p.ron97);
+        rawMin = min(rawMin, p.ron97);
+        rawMax = max(rawMax, p.ron97);
       }
       if (_selectedFuels.contains('Diesel')) {
-        minY = min(minY, p.diesel);
-        maxY = max(maxY, p.diesel);
+        rawMin = min(rawMin, p.diesel);
+        rawMax = max(rawMax, p.diesel);
       }
     }
 
-    // Fallbacks if no fuel is toggled on
-    if (minY == double.infinity) {
+    const double yInterval = 0.1;
+    double minY;
+    double maxY;
+
+    if (rawMin == double.infinity) {
       minY = 1.0;
       maxY = 5.0;
     } else {
-      minY = (minY - 0.15).clamp(0.0, 10.0);
-      maxY = maxY + 0.15;
+      minY = ((rawMin - 0.02) / yInterval).floorToDouble() * yInterval;
+      if (minY < 0) minY = 0.0;
+      maxY = ((rawMax + 0.02) / yInterval).ceilToDouble() * yInterval;
+
+      minY = (minY * 10).round() / 10.0;
+      maxY = (maxY * 10).round() / 10.0;
+
+      if (minY >= maxY) {
+        maxY = (minY + yInterval * 2);
+        maxY = (maxY * 10).round() / 10.0;
+      }
     }
 
     return SingleChildScrollView(
@@ -121,11 +161,9 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Timeframe Filter (Segmented Button / Choice Chips)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Timeframe:', style: TextStyle(fontWeight: FontWeight.bold)),
               Wrap(
                 spacing: 6,
                 children: ['1M', '3M', '6M', 'ALL'].map((tf) {
@@ -134,6 +172,7 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
                     label: Text(tf, style: TextStyle(fontSize: 12, color: isSelected ? Colors.white : Colors.black)),
                     selected: isSelected,
                     selectedColor: Colors.blue,
+                    checkmarkColor: Colors.white,
                     onSelected: (selected) {
                       if (selected) setState(() => _selectedTimeframe = tf);
                     },
@@ -144,11 +183,9 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
           ),
           const SizedBox(height: 8),
 
-          // 2. Interactive Fuel Series Toggles (Multi-Select Filter Chips)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Toggle Fuels:', style: TextStyle(fontWeight: FontWeight.bold)),
               Wrap(
                 spacing: 6,
                 children: [
@@ -159,31 +196,42 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
               ),
             ],
           ),
+
           const SizedBox(height: 20),
 
-          // 3. Interactive Line Chart
           SizedBox(
-            height: 280,
+            height: 320,
             child: LineChart(
               LineChartData(
                 minY: minY,
                 maxY: maxY,
-                gridData: const FlGridData(show: true, drawVerticalLine: false),
-                // Touch interaction & Tooltip configuration
+                gridData: const FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: yInterval,
+                ),
                 lineTouchData: LineTouchData(
                   enabled: true,
                   touchTooltipData: LineTouchTooltipData(
                     getTooltipColor: (_) => Colors.blueGrey.shade900,
+                    fitInsideHorizontally: true,
+                    fitInsideVertically: true,
                     getTooltipItems: (touchedSpots) {
-                      return touchedSpots.map((spot) {
+                      return touchedSpots.asMap().entries.map((entry) {
+                        final spotIndexInList = entry.key;
+                        final spot = entry.value;
                         final fuelName = spot.bar.color == Colors.blue
                             ? 'RON95'
                             : spot.bar.color == Colors.green
                             ? 'RON97'
                             : 'Diesel';
-                        final dateStr = prices[spot.x.toInt()].date;
+                        final index = spot.x.round().clamp(0, prices.length - 1);
+                        final dateStr = prices[index].date;
+                        final text = spotIndexInList == 0
+                            ? '$dateStr\n$fuelName: RM ${spot.y.toStringAsFixed(2)}'
+                            : '$fuelName: RM ${spot.y.toStringAsFixed(2)}';
                         return LineTooltipItem(
-                          '$dateStr\n$fuelName: RM ${spot.y.toStringAsFixed(2)}',
+                          text,
                           const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
                         );
                       }).toList();
@@ -196,20 +244,24 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      reservedSize: 40,
-                      getTitlesWidget: (val, meta) => Text('RM ${val.toStringAsFixed(2)}', style: const TextStyle(fontSize: 9)),
+                      interval: yInterval,
+                      reservedSize: 45,
+                      getTitlesWidget: (val, meta) => Text(
+                        'RM ${val.toStringAsFixed(2)}',
+                        style: const TextStyle(fontSize: 8),
+                      ),
                     ),
                   ),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
+                      interval: (prices.length / 6).ceil().toDouble().clamp(1.0, double.infinity),
                       getTitlesWidget: (value, meta) {
-                        int index = value.toInt();
+                        int index = value.round();
+                        if ((value - index).abs() > 0.01) {
+                          return const SizedBox.shrink();
+                        }
                         if (index >= 0 && index < prices.length) {
-                          // Show fewer dates on small screens to prevent clutter
-                          if (prices.length > 10 && index % (prices.length ~/ 6) != 0) {
-                            return const Text('');
-                          }
                           return Padding(
                             padding: const EdgeInsets.only(top: 6.0),
                             child: Text(
@@ -218,7 +270,7 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
                             ),
                           );
                         }
-                        return const Text('');
+                        return const SizedBox.shrink();
                       },
                     ),
                   ),
@@ -236,7 +288,6 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
           ),
           const SizedBox(height: 24),
 
-          // 4. Latest Price Cards Summary
           const Text('Latest Price Summary', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           SizedBox(
@@ -255,7 +306,6 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
     );
   }
 
-  // ==================== HELPER BUILDERS ====================
 
   FilterChip _buildFuelFilterChip(String label, Color color) {
     final isSelected = _selectedFuels.contains(label);
@@ -269,7 +319,6 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
           if (selected) {
             _selectedFuels.add(label);
           } else {
-            // Prevent deselecting all items
             if (_selectedFuels.length > 1) _selectedFuels.remove(label);
           }
         });
@@ -284,7 +333,7 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
       barWidth: 3,
       isCurved: true,
       dotData: const FlDotData(show: true),
-      belowBarData: BarAreaData(show: true, color: color.withOpacity(0.1)),
+      belowBarData: BarAreaData(show: true, color: color.withValues(alpha: 0.1)),
     );
   }
 
@@ -299,9 +348,9 @@ class _PetrolChartScreenState extends State<PetrolChartScreen> {
       margin: const EdgeInsets.only(right: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: accentColor.withOpacity(0.08),
+        color: accentColor.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: accentColor.withOpacity(0.3)),
+        border: Border.all(color: accentColor.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
