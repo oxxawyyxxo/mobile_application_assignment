@@ -44,6 +44,9 @@ dependencies:
   http: ^1.6.0
   webfeed: ^0.7.0
   share_plus: ^13.3.0
+  geolocator: ^14.0.1
+  geocoding: ^3.0.0
+  flutter_tts: ^4.2.5
 
 dev_dependencies:
   flutter_test:

@@ -6,6 +6,7 @@ class NewsPost{
   final bool isAnonymous;
   final bool isEdited;
   final String status;
+  final String? locationName;
 
   NewsPost({
     required this.id,
@@ -14,18 +15,20 @@ class NewsPost{
     this.imageUrl,
     required this.isAnonymous,
     required this.isEdited,
-    required this.status
+    required this.status,
+    this.locationName,
   });
 
   factory NewsPost.fromMap(Map<String, dynamic> map){
     return NewsPost(
-        id: map['id'],
-        authorId: map['author_id'],
-        content: map['content'],
-        imageUrl: map['image_url'],
-        isAnonymous: map['is_anonymous'] ?? false,
-        isEdited: map['is_edited'] ?? false,
-        status: map['status'] ?? 'active'
+      id: map['id'],
+      authorId: map['author_id'],
+      content: map['content'],
+      imageUrl: map['image_url'],
+      isAnonymous: map['is_anonymous'] ?? false,
+      isEdited: map['is_edited'] ?? false,
+      status: map['status'] ?? 'active',
+      locationName: map['location_name'],
     );
   }
 }

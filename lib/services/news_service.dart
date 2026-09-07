@@ -98,7 +98,12 @@ class NewsService {
     });
   }
 
-  Future<void> submitPost({required String content, XFile? imageFile, required bool isAnonymous}) async {
+  Future<void> submitPost({
+    required String content,
+    XFile? imageFile,
+    required bool isAnonymous,
+    String? locationName,
+  }) async {
     if (currentUserId == null) return;
 
     try {
@@ -121,14 +126,13 @@ class NewsService {
         'content': content,
         'image_url': imageUrl,
         'is_anonymous': isAnonymous,
+        'location_name': locationName,
       });
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('post_draft');
-
     } catch (e) {
-      print('=== SUBMIT POST ERROR ===');
-      print(e.toString());
+      print('=== SUBMIT POST ERROR ===\n$e');
       throw Exception('Failed to post: $e');
     }
   }
