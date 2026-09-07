@@ -21,8 +21,15 @@ subprojects {
 
 subprojects {
     project.pluginManager.withPlugin("com.android.library") {
-        val android = project.extensions.getByName("android") as com.android.build.gradle.BaseExtension
-        android.compileSdkVersion(36)
+        val androidComponents = project.extensions.findByType(com.android.build.api.variant.AndroidComponentsExtension::class.java)
+        androidComponents?.finalizeDsl { extension ->
+            try {
+                val method = extension?.javaClass?.getMethod("setCompileSdk", java.lang.Integer::class.java)
+                method?.invoke(extension, 36)
+            } catch (e: Exception) {
+                project.logger.error("Failed to set compileSdk via finalizeDsl", e)
+            }
+        }
     }
 }
 
