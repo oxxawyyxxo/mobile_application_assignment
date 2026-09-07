@@ -43,6 +43,7 @@ class _AdminPetrolScreenState extends State<AdminPetrolScreen> {
                       .update({'stock_litres': newStock})
                       .eq('id', id);
 
+                  setState(() {});
                   navigator.pop();
                 },
                 child: const Text("Save")
