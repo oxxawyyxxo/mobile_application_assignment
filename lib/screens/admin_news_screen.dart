@@ -10,6 +10,83 @@ class AdminNewsScreen extends StatefulWidget {
 
 class _AdminNewsScreenState extends State<AdminNewsScreen> {
   final _supabase = Supabase.instance.client;
+  final Map<String, String> _userNamesCache = {};
+
+  Future<String> _getUserFullName(String userId) async {
+    if (_userNamesCache.containsKey(userId)) {
+      return _userNamesCache[userId]!;
+    }
+    try {
+      final res = await _supabase
+          .from('user_profiles')
+          .select('full_name')
+          .eq('id', userId)
+          .maybeSingle();
+
+      final fullName = res?['full_name'] as String?;
+      if (fullName != null && fullName.isNotEmpty) {
+        _userNamesCache[userId] = fullName;
+        return fullName;
+      }
+    } catch (_) {}
+    return userId;
+  }
+
+  String _formatDate(String? rawDate) {
+    if (rawDate == null || rawDate.isEmpty) return 'N/A';
+    try {
+      final parsed = DateTime.parse(rawDate).toLocal();
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      ];
+      final hour12 = parsed.hour % 12 == 0 ? 12 : parsed.hour % 12;
+      final period = parsed.hour < 12 ? 'AM' : 'PM';
+      final minute = parsed.minute.toString().padLeft(2, '0');
+      return '${parsed.day} ${months[parsed.month - 1]} ${parsed.year}, $hour12:$minute $period';
+    } catch (_) {
+      return rawDate;
+    }
+  }
+
+  final Map<String, String> _contentCache = {};
+
+  Future<String> _getReportedContent(String? postId, String? commentId) async {
+    final cacheKey = commentId != null ? 'comment_$commentId' : 'post_$postId';
+    if (_contentCache.containsKey(cacheKey)) {
+      return _contentCache[cacheKey]!;
+    }
+
+    try {
+      if (commentId != null) {
+        final res = await _supabase
+            .from('news_comments')
+            .select('content')
+            .eq('id', commentId)
+            .maybeSingle();
+        final content = res?['content'] as String?;
+        if (content != null && content.isNotEmpty) {
+          final result = 'Comment: "$content"';
+          _contentCache[cacheKey] = result;
+          return result;
+        }
+      } else if (postId != null) {
+        final res = await _supabase
+            .from('news_posts')
+            .select('content')
+            .eq('id', postId)
+            .maybeSingle();
+        final content = res?['content'] as String?;
+        if (content != null && content.isNotEmpty) {
+          final result = 'Post: "$content"';
+          _contentCache[cacheKey] = result;
+          return result;
+        }
+      }
+    } catch (_) {}
+
+    return commentId != null ? 'Comment ID: $commentId' : 'Post ID: $postId';
+  }
 
 
   Future<void> _removeContent(String? postId, String? commentId) async {
@@ -40,51 +117,6 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
   Future<void> _ignoreReport(String reportId) async {
     await _supabase.from('news_reports').delete().eq('id', reportId);
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report dismissed')));
-  }
-
-  Future<void> _resetUserData(String userId) async {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Reset User Data?'),
-        content: Text('This will permanently delete all posts, reports, and trade history for User: $userId. Profile information will be kept.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colorScheme.error,
-              foregroundColor: colorScheme.onError,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Reset Everything'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    try {
-      await _supabase.from('news_posts').delete().eq('author_id', userId);
-      await _supabase.from('news_reports').delete().eq('reporter_id', userId);
-      await _supabase.from('trades').delete().eq('user_id', userId);
-      await _supabase.from('transactions').delete().eq('user_id', userId);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User transactions & posts wiped successfully')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error resetting user data: $e'), backgroundColor: colorScheme.error),
-        );
-      }
-    }
   }
 
   @override
@@ -167,33 +199,41 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
               color: isRemoved ? colorScheme.surfaceContainerHigh : colorScheme.surface,
               child: ListTile(
                 title: Text(post['content']),
-                subtitle: Text(
-                  isRemoved ? 'Status: Removed by Admin' : 'Author ID: ${post['author_id']}',
-                  style: TextStyle(color: isRemoved ? colorScheme.error : colorScheme.onSurfaceVariant),
+                subtitle: FutureBuilder<String>(
+                  future: _getUserFullName(post['author_id']),
+                  builder: (context, nameSnapshot) {
+                    final authorName = nameSnapshot.data ?? 'Loading...';
+                    return Text(
+                      isRemoved ? 'Author: $authorName (Status: Removed by Admin)' : 'Author: $authorName',
+                      style: TextStyle(color: isRemoved ? colorScheme.error : colorScheme.onSurfaceVariant),
+                    );
+                  },
                 ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (!isRemoved) ...[
-                      IconButton(
-                        icon: Icon(Icons.delete, color: colorScheme.error),
-                        tooltip: 'Remove Post',
-                        // FIX: Pass post ID as the first parameter, and null for the comment ID
-                        onPressed: () => _removeContent(post['id'], null),
+                trailing: isRemoved
+                    ? null
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.delete, color: colorScheme.error),
+                            tooltip: 'Remove Post',
+                            onPressed: () {
+                              setState(() {
+                                _removeContent(post['id'], null);
+                              });
+                            },
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.block, color: colorScheme.tertiary),
+                            tooltip: 'Ban Author',
+                            onPressed: () {
+                              setState(() {
+                                _banUser(post['author_id']);
+                              });
+                            },
+                          ),
+                        ],
                       ),
-                      IconButton(
-                        icon: Icon(Icons.block, color: colorScheme.tertiary),
-                        tooltip: 'Ban Author',
-                        onPressed: () => _banUser(post['author_id']),
-                      ),
-                    ],
-                    IconButton(
-                      icon: Icon(Icons.restore_from_trash, color: colorScheme.primary),
-                      tooltip: 'Reset All Data for User',
-                      onPressed: () => _resetUserData(post['author_id']),
-                    ),
-                  ],
-                ),
               ),
             );
           },
@@ -217,27 +257,44 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
           itemCount: reports.length,
           itemBuilder: (context, index) {
             final report = reports[index];
-            final isCommentReport = report['comment_id'] != null;
 
             return Card(
               margin: const EdgeInsets.all(8.0),
               child: ListTile(
                 leading: Icon(Icons.warning, color: colorScheme.tertiary),
-                title: Text(isCommentReport
-                    ? 'Reported Comment ID: ${report['comment_id']}'
-                    : 'Reported Post ID: ${report['post_id']}'),
-                subtitle: Text('Reason: ${report['reason']}\nReported by: ${report['reporter_id']}'),
+                title: FutureBuilder<String>(
+                  future: _getReportedContent(report['post_id'], report['comment_id']),
+                  builder: (context, contentSnapshot) {
+                    final content = contentSnapshot.data ?? 'Loading content...';
+                    return Text(content);
+                  },
+                ),
+                subtitle: FutureBuilder<String>(
+                  future: _getUserFullName(report['reporter_id']),
+                  builder: (context, nameSnapshot) {
+                    final reporterName = nameSnapshot.data ?? 'Loading...';
+                    return Text('Reason: ${report['reason']}\nReported by: $reporterName');
+                  },
+                ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextButton(
-                      onPressed: () => _ignoreReport(report['id']),
+                      onPressed: () {
+                        setState(() {
+                          _ignoreReport(report['id']);
+                        });
+                      },
                       child: Text('Ignore', style: TextStyle(color: colorScheme.onSurfaceVariant)),
                     ),
                     IconButton(
                       icon: Icon(Icons.delete, color: colorScheme.error),
                       tooltip: 'Remove Offending Content',
-                      onPressed: () => _removeContent(report['post_id'], report['comment_id']),
+                      onPressed: () {
+                        setState(() {
+                          _removeContent(report['post_id'], report['comment_id']);
+                        });
+                      },
                     ),
                   ],
                 ),
@@ -270,8 +327,14 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
               margin: const EdgeInsets.all(8.0),
               child: ListTile(
                 leading: Icon(Icons.person_off, color: colorScheme.error),
-                title: Text('User ID: $userId'),
-                subtitle: Text('Banned on: ${entry['created_at'] ?? 'N/A'}'),
+                title: FutureBuilder<String>(
+                  future: _getUserFullName(userId),
+                  builder: (context, nameSnapshot) {
+                    final userName = nameSnapshot.data ?? 'Loading...';
+                    return Text('User: $userName');
+                  },
+                ),
+                subtitle: Text('Banned on: ${_formatDate(entry['created_at']?.toString())}'),
                 trailing: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colorScheme.primary,
@@ -280,7 +343,9 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
                   icon: const Icon(Icons.check_circle, size: 18),
                   label: const Text('Unban'),
                   onPressed: () {
-                    _unbanUser(userId);
+                    setState(() {
+                      _unbanUser(userId);
+                    });
                   },
                 ),
               ),
