@@ -125,6 +125,7 @@ class _PostCardState extends State<PostCard> {
   @override
   Widget build(BuildContext context) {
     final isMine = widget.post.authorId == widget.newsService.currentUserId;
+    final isAdminRemoved = widget.post.status == 'admin_removed';
 
     return Card(
       margin: const EdgeInsets.all(8.0),
@@ -149,7 +150,9 @@ class _PostCardState extends State<PostCard> {
               ],
             )
                 : null,
-            trailing: Row(
+            trailing: isAdminRemoved
+                ? null
+                : Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
