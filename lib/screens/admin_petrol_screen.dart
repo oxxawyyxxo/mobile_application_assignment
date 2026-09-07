@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdminPetrolScreen extends StatefulWidget {
@@ -20,11 +21,12 @@ class _AdminPetrolScreenState extends State<AdminPetrolScreen> {
           title: Text('Update Stock: $fuelType'),
           content: TextField(
             controller: controller,
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d{0,9}(\.\d{0,2})?'))],
             keyboardType: const TextInputType.numberWithOptions(
-              decimal: true
+                decimal: true
             ),
             decoration: const InputDecoration(
-              labelText: 'Stock in litres'
+                labelText: 'Stock in litres'
             ),
           ),
           actions: [
@@ -37,9 +39,9 @@ class _AdminPetrolScreenState extends State<AdminPetrolScreen> {
                   final navigator = Navigator.of(context);
                   final newStock = double.tryParse(controller.text) ?? currentStock;
                   await _supabase
-                  .from('fuel_inventory')
-                  .update({'stock_litres': newStock})
-                  .eq('id', id);
+                      .from('fuel_inventory')
+                      .update({'stock_litres': newStock})
+                      .eq('id', id);
 
                   navigator.pop();
                 },
@@ -86,7 +88,10 @@ class _AdminPetrolScreenState extends State<AdminPetrolScreen> {
         ),
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
-          stream: _supabase.from('fuel_inventory').stream(primaryKey: ['id']),
+          stream: _supabase
+              .from('fuel_inventory')
+              .stream(primaryKey: ['id'])
+              .order('fuel_type'),
           builder: (context, snapshot){
             if (!snapshot.hasData){
               if (snapshot.hasError) {
@@ -100,7 +105,9 @@ class _AdminPetrolScreenState extends State<AdminPetrolScreen> {
               );
             }
 
-            final inventory = snapshot.data!;
+            final inventory = List<Map<String, dynamic>>.from(snapshot.data!)
+              ..sort((a, b) => (a['fuel_type'] as String? ?? '')
+                  .compareTo(b['fuel_type'] as String? ?? ''));
 
             if (inventory.isEmpty) {
               return const Center(
@@ -109,7 +116,7 @@ class _AdminPetrolScreenState extends State<AdminPetrolScreen> {
             }
 
             return ListView.builder(
-                itemCount: inventory.length,
+              itemCount: inventory.length,
               padding: const EdgeInsets.all(12),
               itemBuilder: (context, index){
                 final item = inventory[index];
@@ -118,8 +125,9 @@ class _AdminPetrolScreenState extends State<AdminPetrolScreen> {
                 final double stock = (item['stock_litres'] as num).toDouble();
                 final bool isAvailable = item['is_available'] ?? false;
                 final double price = (item['price'] as num).toDouble();
-                
+
                 return Card(
+                  key: ValueKey(id),
                   elevation: 3,
                   margin: const EdgeInsets.symmetric(vertical: 8),
                   child: Padding(
@@ -132,6 +140,7 @@ class _AdminPetrolScreenState extends State<AdminPetrolScreen> {
                           trailing: Switch(
                               value: isAvailable,
                               onChanged: (val) async {
+                                setState(() {});
                                 await _supabase
                                     .from('fuel_inventory')
                                     .update({'is_available' : val})

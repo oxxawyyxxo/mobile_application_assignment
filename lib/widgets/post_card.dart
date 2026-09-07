@@ -3,6 +3,7 @@ import 'package:share_plus/share_plus.dart';
 import '../models/news_post.dart';
 import '../models/news_comment.dart';
 import '../services/news_service.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 class PostCard extends StatefulWidget {
   final NewsPost post;
@@ -17,6 +18,28 @@ class PostCard extends StatefulWidget {
 class _PostCardState extends State<PostCard> {
   bool? _isLiked;
   int? _likeCount;
+
+  final FlutterTts flutterTts = FlutterTts();
+  bool _isSpeaking = false;
+
+  @override
+  void dispose() {
+    flutterTts.stop();
+    super.dispose();
+  }
+
+  Future<void> _toggleSpeech() async {
+    if (_isSpeaking) {
+      await flutterTts.stop();
+      setState(() => _isSpeaking = false);
+    } else {
+      setState(() => _isSpeaking = true);
+      flutterTts.setCompletionHandler(() {
+        if (mounted) setState(() => _isSpeaking = false);
+      });
+      await flutterTts.speak(widget.post.content);
+    }
+  }
 
   void _showEditDialog(BuildContext context) {
     final TextEditingController editCtrl = TextEditingController(text: widget.post.content);
@@ -46,8 +69,10 @@ class _PostCardState extends State<PostCard> {
     );
   }
 
-  void _sharePost() {
-    final authorName = widget.post.isAnonymous ? "an Anonymous User" : "User ${widget.post.authorId.substring(0, 5)}";
+  void _sharePost() async {
+    final authorName = widget.post.isAnonymous
+        ? "an Anonymous User"
+        : await widget.newsService.getUserName(widget.post.authorId);
     final shareText = "Check out this post by $authorName:\n\n${widget.post.content}";
     Share.share(shareText);
   }
@@ -108,22 +133,41 @@ class _PostCardState extends State<PostCard> {
                 return Text(snapshot.data ?? 'Loading...');
               },
             ),
-            trailing: PopupMenuButton<String>(
-              onSelected: (value) async {
-                if (value == 'delete') {
-                  await widget.newsService.deletePost(widget.post.id);
-                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post deleted')));
-                }
-                if (value == 'edit') _showEditDialog(context);
-                if (value == 'report') {
-                  await widget.newsService.reportPost(widget.post.id);
-                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report sent to admin for verify')));
-                }
-              },
-              itemBuilder: (context) => [
-                if (isMine && widget.post.status == 'active') const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                if (isMine && widget.post.status == 'active') const PopupMenuItem(value: 'delete', child: Text('Delete')),
-                if (!isMine && widget.post.status == 'active') const PopupMenuItem(value: 'report', child: Text('Report')),
+            subtitle: widget.post.locationName != null
+                ? Row(
+              children: [
+                const Icon(Icons.location_on, size: 14, color: Colors.grey),
+                const SizedBox(width: 4),
+                Text(widget.post.locationName!, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              ],
+            )
+                : null,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(_isSpeaking ? Icons.volume_off : Icons.volume_up, color: Colors.blue),
+                  onPressed: _toggleSpeech,
+                  tooltip: 'Listen to post',
+                ),
+                PopupMenuButton<String>(
+                  onSelected: (value) async {
+                    if (value == 'delete') {
+                      await widget.newsService.deletePost(widget.post.id);
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post deleted')));
+                    }
+                    if (value == 'edit') _showEditDialog(context);
+                    if (value == 'report') {
+                      await widget.newsService.reportPost(widget.post.id);
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report sent to admin for verify')));
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    if (isMine && widget.post.status == 'active') const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                    if (isMine && widget.post.status == 'active') const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                    if (!isMine && widget.post.status == 'active') const PopupMenuItem(value: 'report', child: Text('Report')),
+                  ],
+                ),
               ],
             ),
           ),
