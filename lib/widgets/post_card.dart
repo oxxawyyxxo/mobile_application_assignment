@@ -23,6 +23,12 @@ class _PostCardState extends State<PostCard> {
   bool _isSpeaking = false;
 
   @override
+  void initState() {
+    super.initState();
+    flutterTts.setVolume(1.0);
+  }
+
+  @override
   void dispose() {
     flutterTts.stop();
     super.dispose();
@@ -34,6 +40,7 @@ class _PostCardState extends State<PostCard> {
       setState(() => _isSpeaking = false);
     } else {
       setState(() => _isSpeaking = true);
+      await flutterTts.setVolume(1.0);
       flutterTts.setCompletionHandler(() {
         if (mounted) setState(() => _isSpeaking = false);
       });
@@ -146,7 +153,7 @@ class _PostCardState extends State<PostCard> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  icon: Icon(_isSpeaking ? Icons.volume_off : Icons.volume_up, color: Colors.blue),
+                  icon: const Icon(Icons.volume_up, color: Colors.blue),
                   onPressed: _toggleSpeech,
                   tooltip: 'Listen to post',
                 ),
